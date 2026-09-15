@@ -25,7 +25,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"website" | "presentation">("website");
   const isIntroComplete = useRef(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [heroVideo] = useState("TRUXOEQ1.mp4"); // Permanent default
+  const [heroVideo] = useState("TRUXOEQ1_v2.mp4"); // Permanent default
 
   const { scrollY } = useScroll();
   const heroVideoY = useTransform(scrollY, [0, 1000], ["0%", "30%"]);
