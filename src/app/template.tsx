@@ -3,15 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-
-// How long the branded splash stays fully visible before it fades out (ms).
-// It is applied as the CSS animation delay, so it also works without JS.
-const SPLASH_HOLD_MS = 1200;
-const SPLASH_FADE_MS = 400;
-
-// Module scope: survives client-side navigations, resets on a full page load.
-// Only ever written from the browser, so it is never shared between server requests.
-let splashPlayed = false;
+import { SPLASH_FADE_MS, SPLASH_HOLD_MS, splashState } from "@/lib/splash";
 
 export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -21,11 +13,11 @@ export default function Template({ children }: { children: React.ReactNode }) {
   // 2s full-screen loader on every navigation and hid the page (opacity 0) until it
   // finished, so we only play it once per page load, never on /admin, and never
   // hide the content itself.
-  const [showSplash, setShowSplash] = useState(() => !splashPlayed && !isAdmin);
+  const [showSplash, setShowSplash] = useState(() => !splashState.played && !isAdmin);
 
   useEffect(() => {
     if (!showSplash) return;
-    splashPlayed = true;
+    splashState.played = true;
     const timer = setTimeout(() => setShowSplash(false), SPLASH_HOLD_MS + SPLASH_FADE_MS);
     return () => clearTimeout(timer);
   }, [showSplash]);

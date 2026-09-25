@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Montserrat, JetBrains_Mono } from "next/font/google";
+import { Inter, Archivo, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import ConditionalLayout from "@/components/layout/ConditionalLayout";
@@ -10,11 +10,13 @@ const inter = Inter({
   preload: false
 });
 
-const montserrat = Montserrat({
+// Display font for every heading and label. Archivo is a variable font with a width axis, so
+// headings can run "expanded" (wide, like heavy-machinery signage) while small labels stay tighter.
+// The CSS variable / Tailwind utility keep their old name, `font-orbitron`, so existing classes keep working.
+const archivo = Archivo({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  axes: ["wdth"],
   variable: "--font-orbitron",
-  preload: false
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -58,7 +60,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning className={`${inter.variable} ${montserrat.variable} ${jetbrainsMono.variable} font-sans bg-[#F5F2EB] text-[#111113] antialiased pb-24 md:pb-0`}>
+      <body suppressHydrationWarning className={`${inter.variable} ${archivo.variable} ${jetbrainsMono.variable} font-sans bg-[#F5F2EB] text-[#111113] antialiased pb-24 md:pb-0`}>
         {/* Google Analytics */}
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-6GF5KLJ8B1" strategy="afterInteractive" />
         <Script id="google-analytics" strategy="afterInteractive">

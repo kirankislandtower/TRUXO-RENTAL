@@ -49,6 +49,12 @@ html {
   /* Lenis handles smooth scrolling; native scroll-behavior: smooth conflicts with Next.js router */
 }
 
+@layer base {
+  .font-orbitron {
+    font-stretch: 112.5%;
+  }
+}
+
 /* Premium Glassmorphism Cards */
 .glass-card-light {
   background: rgba(255, 255, 255, 0.7);

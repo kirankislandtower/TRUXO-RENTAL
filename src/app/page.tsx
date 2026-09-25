@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent, useSpring, animate } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent, useSpring, useReducedMotion, animate } from "framer-motion";
 import {
   ChevronRight,
   ChevronLeft,
@@ -15,14 +15,54 @@ import {
   Globe,
   MapPin,
   Maximize2,
+  Play,
   X
 } from "lucide-react";
 import Link from "next/link";
 import { companyProfile } from "@/data";
 import { ProductivityChart, OperationTrendsChart } from "@/components/ui/Charts";
+import FleetBand from "@/components/home/FleetBand";
+import { SPLASH_HOLD_MS, splashState } from "@/lib/splash";
+
+// Small video-style thumbnail in the hero corner. Opens the same slide-deck "presentation mode" as the nav button.
+function PresentationChip({ onOpen, delay, className = "" }: { onOpen: () => void; delay: number; className?: string }) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onOpen}
+      aria-label="Watch the TRUXO company presentation"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.97 }}
+      className={`group h-28 w-48 overflow-hidden rounded-2xl border border-white/25 shadow-2xl ${className}`}
+    >
+      <Image src="/images/hero_loader.jpg" alt="" fill sizes="192px" className="object-cover brightness-75 transition duration-500 group-hover:scale-105 group-hover:brightness-100" />
+      <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#C5A059] text-[#111113] shadow-lg">
+          <Play className="ml-0.5 h-5 w-5 fill-current" />
+        </span>
+      </span>
+      <span className="absolute bottom-2 left-3 right-3 text-left text-[10px] font-black uppercase tracking-widest text-white">Watch presentation</span>
+    </motion.button>
+  );
+}
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<"website" | "presentation">("website");
+
+  // Hero intro timing. On a fresh page load the branded splash covers the first ~1.6s, so the text starts
+  // revealing just as the splash begins to fade (the two overlap). On client-side visits there is no splash.
+  const reduceMotion = useReducedMotion();
+  const [t0] = useState(() => (splashState.played ? 0.15 : (SPLASH_HOLD_MS - 150) / 1000));
+  const reveal = { duration: 1.15, ease: [0.16, 1, 0.3, 1] as const };
+  const rise = (delay: number) => ({
+    initial: reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.9, delay: t0 + delay, ease: [0.16, 1, 0.3, 1] as const },
+  });
   const isIntroComplete = useRef(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [heroVideo] = useState("TRUXOEQ1_v2.mp4"); // Permanent default
@@ -134,6 +174,10 @@ export default function Home() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [viewMode]);
+  const openPresentation = () => {
+    setViewMode("presentation");
+    setCurrentSlide(0);
+  };
   const nextSlide = () => setCurrentSlide((prev) => Math.min(prev + 1, totalSlides - 1));
   const prevSlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
 
@@ -174,7 +218,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F5F2EB] text-[#111113] pt-24">
+    <main className={`min-h-screen bg-[#F5F2EB] text-[#111113] ${viewMode === "presentation" ? "pt-24" : ""}`}>
 
 
       {viewMode === "presentation" ? (
@@ -566,65 +610,58 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-r from-[#050505]/80 via-[#050505]/25 to-transparent" />
               </div>
 
-              {/* Hero Content */}
-              <motion.div style={{ opacity: heroTextOpacity, y: heroTextY }} className="relative z-10 max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                <div className="space-y-6 md:space-y-8 text-white max-w-2xl mt-12 md:mt-0">
-                  <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 2.0, ease: [0.16, 1, 0.3, 1] }}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111113]/50 border border-white/10 w-fit font-black uppercase text-xs tracking-[0.2em] text-[#FF7C00] backdrop-blur-md shadow-lg"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    <span>United Arab Emirates</span>
-                  </motion.div>
+              {/* Hero Content: centered, wide display headline over the full-bleed video */}
+              <motion.div style={{ opacity: heroTextOpacity, y: heroTextY }} className="relative z-10 mx-auto flex w-full max-w-7xl flex-col items-center px-6 pb-20 pt-14 text-center text-white md:pb-0 md:pt-0">
+                <motion.div {...rise(0)} className="mb-5 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-[#C5A059] [text-shadow:0_1px_12px_rgba(0,0,0,0.7)] sm:text-xs md:mb-8 md:tracking-[0.25em]">
+                  <MapPin className="h-4 w-4" />
+                  <span>United Arab Emirates</span>
+                </motion.div>
 
-                  <motion.h1
-                    initial={{ opacity: 0, y: 40, filter: "blur(10px)" }}
-                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                    transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 2.2 }}
-                    className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl lg:text-[5.5rem] font-black font-orbitron tracking-tight text-white uppercase leading-[1.05]"
-                  >
-                    TRUXO HEAVY <br />
+                {/* Each line slides up from behind its own mask, one after the other. */}
+                <h1 className="text-balance font-orbitron font-[650] font-stretch-expanded uppercase leading-[1.04] tracking-[0.005em] text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.5)] text-[clamp(1.6rem,4.6vw,4.25rem)]">
+                  <span className="block overflow-hidden pb-[0.12em] -mb-[0.12em]">
                     <motion.span
-                      initial={{ opacity: 0, x: -30, filter: "blur(10px)" }}
-                      animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-                      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 2.4 }}
-                      className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059] drop-shadow-[0_0_15px_rgba(197,160,89,0.3)] sm:whitespace-nowrap block sm:inline mt-1 sm:mt-0"
+                      className="block"
+                      initial={reduceMotion ? { opacity: 0 } : { y: "108%" }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ ...reveal, delay: t0 + 0.12 }}
                     >
-                      EQUIPMENT RENTAL
+                      TRUXO Heavy Equipment
                     </motion.span>
-                    {" Dubai"}
-                  </motion.h1>
+                  </span>
+                  <span className="mt-1 block overflow-hidden pb-[0.12em] -mb-[0.12em] md:mt-2">
+                    <motion.span
+                      className="block text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]"
+                      initial={reduceMotion ? { opacity: 0 } : { y: "108%" }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ ...reveal, delay: t0 + 0.26 }}
+                    >
+                      Rental Dubai
+                    </motion.span>
+                  </span>
+                </h1>
 
-                  <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 2.6 }}
-                    className="text-base sm:text-lg md:text-xl text-gray-300 font-medium leading-relaxed max-w-xl"
-                  >
-                    Reliable heavy equipment solutions for construction, industrial, and infrastructure projects across the UAE.
-                  </motion.p>
+                <motion.p {...rise(0.6)} className="mt-5 max-w-2xl text-balance text-[15px] font-medium leading-relaxed text-white/85 [text-shadow:0_1px_14px_rgba(0,0,0,0.65)] sm:mt-6 sm:text-lg md:mt-8 md:text-xl">
+                  Reliable heavy equipment solutions for construction, industrial, and infrastructure projects across the UAE.
+                </motion.p>
 
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 2.9, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex flex-col sm:flex-row flex-wrap gap-4 md:gap-5 pt-4 w-full sm:w-auto"
-                  >
-                    <Link href="/fleet" className="w-full sm:w-auto">
-                      <motion.div whileTap={{ scale: 0.95 }} className="btn-kampr-accent px-6 py-4 md:px-8 md:py-4 text-sm md:text-base shadow-[0_0_20px_rgba(197,160,89,0.3)] w-full flex justify-center items-center">
-                        Explore Fleet <ChevronRight className="w-5 h-5 ml-1 inline" />
-                      </motion.div>
-                    </Link>
-                    <Link href="/contact" className="w-full sm:w-auto">
-                      <motion.div whileTap={{ scale: 0.95 }} className="px-6 py-4 md:px-8 md:py-4 rounded-full font-black border-2 border-white/20 text-white hover:bg-white hover:text-[#050505] transition-all duration-300 text-xs md:text-sm uppercase tracking-widest backdrop-blur-md w-full flex justify-center items-center">
-                        Request Quote
-                      </motion.div>
-                    </Link>
-                  </motion.div>
-                </div>
+                <motion.div {...rise(0.8)} className="mt-6 grid w-full max-w-[21rem] grid-cols-1 gap-3 min-[350px]:grid-cols-2 sm:mt-8 sm:flex sm:w-auto sm:max-w-none sm:justify-center md:mt-10 md:gap-5">
+                  <Link href="/fleet" className="block">
+                    <motion.div whileTap={{ scale: 0.95 }} className="flex items-center justify-center whitespace-nowrap rounded-full bg-gradient-to-br from-[#DFBA73] to-[#C5A059] px-4 py-3 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#12131A] shadow-[0_4px_18px_rgba(197,160,89,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(197,160,89,0.45)] sm:px-8 sm:py-4 sm:text-sm">
+                      Explore Fleet <ChevronRight className="ml-1 hidden h-4 w-4 min-[380px]:inline sm:h-5 sm:w-5" />
+                    </motion.div>
+                  </Link>
+                  <Link href="/contact" className="block">
+                    <motion.div whileTap={{ scale: 0.95 }} className="flex items-center justify-center whitespace-nowrap rounded-full border-2 border-white/25 px-4 py-[0.6875rem] text-[11px] font-black uppercase tracking-widest text-white backdrop-blur-md transition-all duration-300 hover:bg-white hover:text-[#050505] sm:px-8 sm:py-[0.9375rem] sm:text-sm">
+                      Request Quote
+                    </motion.div>
+                  </Link>
+                </motion.div>
+
               </motion.div>
+
+              {/* desktop: chip floats in the bottom-right corner, like a video preview */}
+              <PresentationChip onOpen={openPresentation} delay={t0 + 1.15} className="absolute bottom-10 right-10 z-10 hidden md:block" />
             </motion.section>
           </div>
 
@@ -692,53 +729,8 @@ export default function Home() {
             </div>
           </section>
 
-          {/* SECTION 4: Interactive Fleet Showcase */}
-          <section className="relative w-full min-h-screen bg-[#050505] py-32 overflow-hidden z-[20] border-t border-white/5">
-            <div className="max-w-7xl mx-auto px-6 mb-16">
-              <h2 className="text-xs font-black uppercase tracking-widest text-[#C5A059] mb-4 text-center">Equipment Arsenal</h2>
-              <h3 className="text-2xl md:text-4xl lg:text-5xl lg:text-7xl font-black font-orbitron uppercase text-white tracking-tight text-center">
-                Our Fleet Segments
-              </h3>
-            </div>
-
-            <div className="flex flex-col lg:flex-row h-[80vh] w-full px-6 gap-4">
-              {columnsData.map((col, idx) => (
-                <Link
-                  href="/fleet"
-                  key={idx}
-                  className="group relative flex-1 hover:flex-[3] transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden rounded-3xl border border-white/10 cursor-pointer min-h-[100px] lg:min-h-full block"
-                >
-                  <Image
-                    src={col.img}
-                    alt={col.title}
-                    width={1920} height={1080}
-                    className="absolute inset-0 w-full h-full object-cover filter brightness-[0.4] group-hover:brightness-100 transition-all duration-700 scale-125 group-hover:scale-100"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-700" />
-
-                  <div className="absolute bottom-0 left-0 w-full p-8 lg:p-12 flex flex-col justify-end h-full">
-                    <div className="flex items-center gap-6 mb-4">
-                      <span className="text-4xl font-black font-orbitron text-[#C5A059] opacity-50 group-hover:opacity-100 transition-opacity duration-700">
-                        0{idx + 1}
-                      </span>
-                      <h4 className="text-2xl md:text-4xl font-black font-orbitron text-white uppercase whitespace-nowrap lg:-rotate-90 lg:origin-left lg:absolute lg:left-12 lg:bottom-12 group-hover:lg:rotate-0 group-hover:lg:relative group-hover:lg:left-auto group-hover:lg:bottom-auto transition-all duration-700">
-                        {col.title}
-                      </h4>
-                    </div>
-
-                    <div className="opacity-0 translate-y-10 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-700 delay-100 hidden lg:block">
-                      <p className="text-gray-200 font-medium mb-8 max-w-md leading-relaxed line-clamp-3">
-                        {col.desc}
-                      </p>
-                      <span className="inline-block px-8 py-4 rounded-full bg-[#C5A059] text-[#111113] font-bold text-xs uppercase tracking-widest group-hover:bg-white transition-colors">
-                        View Inventory
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
+          {/* SECTION 4: Fleet categories (photo band + accordion cards) */}
+          <FleetBand items={columnsData} />
 
           {/* SECTION 5: Trust Metrics & CTA */}
           <section className="relative w-full min-h-screen bg-[#050505] py-32 text-white overflow-hidden z-[30] border-t border-white/5">
