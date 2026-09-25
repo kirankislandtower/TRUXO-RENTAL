@@ -1,23 +1,20 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/adminAuth';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { generateUniqueId, randomDigits } from '@/lib/ids';
+import { splitContactRequest } from '@/lib/contactRequest';
 
-export async function POST(request: Request) {
+const REQUEST_STATUSES = ['Pending', 'Approved', 'Rejected'];
+
+export async function POST() {
   try {
-    const { password } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const { data, error } = await supabaseAdmin
       .from('contact_requests')
@@ -37,21 +34,15 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { password, id } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { id } = await request.json();
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const { error } = await supabaseAdmin
       .from('contact_requests')
@@ -71,57 +62,80 @@ export async function DELETE(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { password, id, status } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id, status } = await request.json();
+
+    if (!REQUEST_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    const { data: requestData, error } = await supabaseAdmin
+    const { data: requestData, error: fetchError } = await supabaseAdmin
       .from('contact_requests')
-      .update({ status })
+      .select('*')
       .eq('id', id)
-      .select()
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      throw error;
+    if (fetchError) throw fetchError;
+    if (!requestData) {
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
 
-    // Auto-create client if approved
-    if (status === 'Approved' && requestData) {
-      // Check if client already exists by email
-      const { data: existingClient } = await supabaseAdmin
+    // Approving creates the client account. Do that BEFORE flipping the status
+    // so a failed insert can't leave a request "Approved" with no client behind
+    // it (and retrying the approval is safe: an existing client is reused).
+    let clientId: string | null = null;
+    let clientCreated = false;
+
+    if (status === 'Approved') {
+      const { data: existing, error: existingError } = await supabaseAdmin
         .from('clients')
-        .select('id')
+        .select('client_id')
         .eq('email', requestData.email)
-        .maybeSingle();
-        
-      if (!existingClient) {
-        const clientId = `CL-${Math.floor(100 + Math.random() * 900)}`;
-        const clientName = `${requestData.first_name} ${requestData.last_name}`;
-        
-        await supabaseAdmin.from('clients').insert({
-          client_id: clientId,
-          name: clientName, 
+        .limit(1);
+
+      if (existingError) throw existingError;
+
+      if (existing && existing.length > 0) {
+        clientId = existing[0].client_id;
+      } else {
+        const clientName = `${requestData.first_name} ${requestData.last_name}`.trim();
+        // The contact form keeps the phone inside `equipment_required`; there is
+        // no separate phone_number column value for it.
+        const phone = requestData.phone_number || splitContactRequest(requestData.equipment_required).phone || '';
+        const newClientId = await generateUniqueId(supabaseAdmin, 'clients', 'client_id', () => `CL-${randomDigits(4)}`);
+
+        const { error: insertError } = await supabaseAdmin.from('clients').insert({
+          client_id: newClientId,
+          name: clientName,
           contact: clientName,
           email: requestData.email,
-          phone: requestData.phone_number || '',
+          phone,
+          active_rentals: 0,
+          total_spent: 'AED 0',
+          joined: new Date().toISOString(),
         });
+
+        if (insertError) throw insertError;
+        clientId = newClientId;
+        clientCreated = true;
       }
     }
 
-    return NextResponse.json({ success: true });
+    const { error: updateError } = await supabaseAdmin
+      .from('contact_requests')
+      .update({ status })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    return NextResponse.json({ success: true, client_id: clientId, client_created: clientCreated });
   } catch (error: unknown) {
     console.error('Error updating request:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });

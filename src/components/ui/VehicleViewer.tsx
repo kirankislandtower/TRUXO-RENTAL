@@ -1,18 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize2, X } from "lucide-react";
 
+const subscribeNoop = () => () => {};
+
 export default function VehicleViewer({ imageSrc, title }: { imageSrc: string, title: string }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // false during SSR/hydration, true afterwards: the portal target (document.body) only exists in the browser.
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
   return (
     <>

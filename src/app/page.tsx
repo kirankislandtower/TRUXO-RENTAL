@@ -27,9 +27,6 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [heroVideo] = useState("TRUXOEQ1_v2.mp4"); // Permanent default
 
-  const { scrollY } = useScroll();
-  const heroVideoY = useTransform(scrollY, [0, 1000], ["0%", "30%"]);
-
   // Scroll Scrubbing Logic
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollVideoRef = useRef<HTMLVideoElement>(null);
@@ -123,7 +120,8 @@ export default function Home() {
     // Keyboard Navigation
     const handleKeyDown = (e: KeyboardEvent) => {
       if (viewMode !== "presentation") return;
-      if (e.key === "ArrowRight" || e.key === "Space" || e.key === "Enter") {
+      if (e.key === " ") e.preventDefault(); // don't also scroll the page underneath
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") {
         setCurrentSlide((prev) => Math.min(prev + 1, totalSlides - 1));
       } else if (e.key === "ArrowLeft") {
         setCurrentSlide((prev) => Math.max(prev - 1, 0));

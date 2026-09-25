@@ -1,11 +1,13 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Truck, Users, Inbox, TrendingUp, Activity, CheckCircle2, Clock,
   AlertTriangle, Plus, ArrowRight, Zap, DollarSign, BarChart3,
   RefreshCw, Package, Calendar, ChevronRight
 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
+import { parseContactRequest } from "@/lib/contactRequest";
 
 type ContactRequest = {
   id: number;
@@ -92,6 +94,23 @@ interface OverviewProps {
   onViewRequest: (request: ContactRequest) => void;
 }
 
+// Loads everything the Overview shows. A section is null when its endpoint failed,
+// so the caller can keep whatever it was already showing.
+async function fetchOverviewData() {
+  const [resReq, resClients, resFleet] = await Promise.all([
+    adminFetch("/api/admin/requests", { method: "POST" }),
+    adminFetch("/api/admin/clients", { method: "POST" }),
+    adminFetch("/api/admin/fleet", { method: "POST" }),
+  ]);
+  return {
+    requests: resReq.ok
+      ? ((await resReq.json()).requests || []).map((req: ContactRequest) => parseContactRequest(req)) as ContactRequest[]
+      : null,
+    clients: resClients.ok ? ((await resClients.json()).clients || []) as Client[] : null,
+    fleet: resFleet.ok ? ((await resFleet.json()).fleet || []) as FleetAsset[] : null,
+  };
+}
+
 export default function Overview({ onNavigate, onViewRequest }: OverviewProps) {
   const [requests, setRequests] = useState<ContactRequest[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -99,33 +118,30 @@ export default function Overview({ onNavigate, onViewRequest }: OverviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  const applyData = useCallback((data: Awaited<ReturnType<typeof fetchOverviewData>>) => {
+    if (data.requests) setRequests(data.requests);
+    if (data.clients) setClients(data.clients);
+    if (data.fleet) setFleet(data.fleet);
+  }, []);
+
+  // Refresh button
   const fetchAll = async () => {
     setIsLoading(true);
     try {
-      const password = sessionStorage.getItem("admin_token");
-      const [resReq, resClients, resFleet] = await Promise.all([
-        fetch("/api/admin/requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-        fetch("/api/admin/clients",  { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-        fetch("/api/admin/fleet",    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-      ]);
-      if (resReq.ok) { 
-        const d = await resReq.json();     
-        const parsedRequests = (d.requests || []).map((req: any) => {
-          const match = req.equipment_required?.match(/^\[Phone: (.*?)\] \[Address: (.*?)\]\n\n([\s\S]*)$/);
-          if (match) {
-            return { ...req, phone: match[1], address: match[2], equipment_required: match[3] };
-          }
-          return req;
-        });
-        setRequests(parsedRequests); 
-      }
-      if (resClients.ok) { const d = await resClients.json(); setClients(d.clients || []); }
-      if (resFleet.ok)   { const d = await resFleet.json();   setFleet(d.fleet || []); }
+      applyData(await fetchOverviewData());
     } catch (e) { console.error(e); }
     finally { setIsLoading(false); setLastRefresh(new Date()); }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  // Initial load (isLoading already starts true)
+  useEffect(() => {
+    let active = true;
+    fetchOverviewData()
+      .then((data) => { if (active) applyData(data); })
+      .catch((e) => console.error(e))
+      .finally(() => { if (active) { setIsLoading(false); setLastRefresh(new Date()); } });
+    return () => { active = false; };
+  }, [applyData]);
 
   const deployed    = fleet.filter(f => f.status === "Deployed").length;
   const available   = fleet.filter(f => f.status === "Available").length;

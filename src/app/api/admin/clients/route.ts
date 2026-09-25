@@ -1,23 +1,17 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/adminAuth';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { generateUniqueId, randomDigits } from '@/lib/ids';
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const { password } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const { data, error } = await supabaseAdmin
       .from('clients')
@@ -37,24 +31,21 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { password, name, contact, email, phone } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { name, contact, email, phone } = await request.json();
+
+    if (!name || !email) {
+      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    // Auto-generate unique client_id in CL-XXX format
-    const clientId = `CL-${Math.floor(100 + Math.random() * 900)}`;
+    const clientId = await generateUniqueId(supabaseAdmin, 'clients', 'client_id', () => `CL-${randomDigits(4)}`);
 
     const { error } = await supabaseAdmin.from('clients').insert({
       client_id: clientId,

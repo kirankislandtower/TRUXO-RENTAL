@@ -1,13 +1,14 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  DollarSign, Plus, Search, Filter, Eye, Download, FileText,
-  CheckCircle2, Clock, AlertCircle, X, Building2, Calendar,
-  TrendingUp, Receipt, AlertTriangle, Loader2
+  Plus, Search, Eye, Download, FileText, CheckCircle2,
+  Clock, AlertCircle, X, Building2, Receipt, AlertTriangle,
+  Loader2
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { adminFetch } from "@/lib/adminFetch";
 
 type InvoiceStatus = "Paid" | "Pending" | "Overdue" | "Draft";
 
@@ -44,6 +45,20 @@ const statusConfig: Record<InvoiceStatus, { color: string; bg: string; icon: Rea
   Draft:   { color: "#6B7280", bg: "#6B7280", icon: FileText },
 };
 
+// Loads everything the Invoices tab shows. A section is null when its endpoint failed.
+async function fetchInvoiceData() {
+  const [resInv, resCli, resFleet] = await Promise.all([
+    adminFetch("/api/admin/invoices", { method: "POST" }),
+    adminFetch("/api/admin/clients", { method: "POST" }),
+    adminFetch("/api/admin/fleet", { method: "POST" })
+  ]);
+  return {
+    invoices: resInv.ok ? ((await resInv.json()).invoices || []) as Invoice[] : null,
+    clients: resCli.ok ? ((await resCli.json()).clients || []) as Client[] : null,
+    fleet: resFleet.ok ? ((await resFleet.json()).fleet || []) as FleetAsset[] : null,
+  };
+}
+
 export default function Invoices() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<InvoiceStatus | "All">("All");
@@ -60,27 +75,22 @@ export default function Invoices() {
   const [addForm, setAddForm] = useState({ client_id: "", equipment: "", amount: "", dueDays: "30" });
   const [addError, setAddError] = useState("");
 
-  const fetchData = async () => {
-    try {
-      const password = sessionStorage.getItem("admin_token");
-      const [resInv, resCli, resFleet] = await Promise.all([
-        fetch("/api/admin/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-        fetch("/api/admin/clients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-        fetch("/api/admin/fleet", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) })
-      ]);
-      if (resInv.ok) { const d = await resInv.json(); setInvoices(d.invoices || []); }
-      if (resCli.ok) { const d = await resCli.json(); setClients(d.clients || []); }
-      if (resFleet.ok) { const d = await resFleet.json(); setFleet(d.fleet || []); }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const applyData = useCallback((data: Awaited<ReturnType<typeof fetchInvoiceData>>) => {
+    if (data.invoices) setInvoices(data.invoices);
+    if (data.clients) setClients(data.clients);
+    if (data.fleet) setFleet(data.fleet);
+  }, []);
+
+  const refresh = () => fetchInvoiceData().then(applyData).catch((e) => console.error(e));
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    let active = true;
+    fetchInvoiceData()
+      .then((data) => { if (active) applyData(data); })
+      .catch((e) => console.error(e))
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [applyData]);
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,12 +118,9 @@ export default function Invoices() {
         total: finalAmount
       }];
 
-      const password = sessionStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/invoices", {
+      const res = await adminFetch("/api/admin/invoices", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          password,
           client_name: client.name,
           client_id: client.client_id,
           equipment: addForm.equipment,
@@ -128,7 +135,7 @@ export default function Invoices() {
       
       setShowAddModal(false);
       setAddForm({ client_id: "", equipment: "", amount: "", dueDays: "30" });
-      fetchData(); // Refresh
+      refresh();
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -138,11 +145,9 @@ export default function Invoices() {
 
   const handleMarkPaid = async (id: string) => {
     try {
-      const password = sessionStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/invoices", {
+      const res = await adminFetch("/api/admin/invoices", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, id, status: "Paid" })
+        body: JSON.stringify({ id, status: "Paid" })
       });
       if (res.ok) {
         setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, status: "Paid" } : inv));

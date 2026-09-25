@@ -1,24 +1,20 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/adminAuth';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { generateUniqueId, randomDigits } from '@/lib/ids';
+
+const INVOICE_STATUSES = ['Paid', 'Pending', 'Overdue', 'Draft'];
 
 // FETCH ALL INVOICES
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const { password } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const { data, error } = await supabaseAdmin
       .from('invoices')
@@ -43,26 +39,19 @@ export async function POST(request: Request) {
 // CREATE INVOICE
 export async function PUT(request: Request) {
   try {
-    const { password, client_name, client_id, equipment, amount, issued, due, items } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { client_name, client_id, equipment, amount, issued, due, items } = await request.json();
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    // Auto-generate invoice ID
+    // Auto-generate a collision-free invoice ID
     const year = new Date().getFullYear();
-    const randomNum = Math.floor(100 + Math.random() * 900);
-    const invoiceId = `INV-${year}-${randomNum}`;
+    const invoiceId = await generateUniqueId(supabaseAdmin, 'invoices', 'id', () => `INV-${year}-${randomDigits(4)}`);
 
     const { error } = await supabaseAdmin.from('invoices').insert({
       id: invoiceId,
@@ -88,21 +77,19 @@ export async function PUT(request: Request) {
 // UPDATE INVOICE STATUS
 export async function PATCH(request: Request) {
   try {
-    const { password, id, status } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id, status } = await request.json();
+
+    if (!id || !INVOICE_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'Invalid invoice id or status' }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const { error } = await supabaseAdmin
       .from('invoices')

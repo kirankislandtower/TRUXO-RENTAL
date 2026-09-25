@@ -54,7 +54,7 @@ export default async function InsightPostPage({ params }: { params: Promise<{ sl
 
         {/* Content */}
         <div className="prose prose-invert prose-lg max-w-none prose-headings:font-orbitron prose-headings:uppercase prose-headings:text-white prose-a:text-[#C5A059] hover:prose-a:text-[#DFBA73] prose-img:rounded-2xl">
-          {post.content.split('\\n').map((paragraph, index) => {
+          {post.content.split('\n').map((paragraph, index) => {
             if (paragraph.startsWith('### ')) {
               return <h3 key={index} className="text-2xl mt-12 mb-6 text-[#C5A059]">{paragraph.replace('### ', '')}</h3>;
             }

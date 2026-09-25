@@ -2,10 +2,11 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, Search, Mail, Phone, Building2, Calendar, FileText, X, Briefcase,
-  CreditCard, Receipt, MapPin, TrendingUp, CheckCircle2, Truck, Plus,
-  Loader2, ChevronDown, ArrowUpDown, Shield, AlertTriangle
+  Users, Search, Mail, Phone, Building2, Calendar,
+  FileText, X, Briefcase, MapPin, TrendingUp, CheckCircle2,
+  Truck, Plus, Loader2, ArrowUpDown, AlertTriangle
 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
 
 export type Client = {
   client_id: string;
@@ -63,22 +64,13 @@ export default function ClientDirectory({ onTrackAsset }: { onTrackAsset?: (asse
   React.useEffect(() => {
     const fetchClients = async () => {
       try {
-        const password = sessionStorage.getItem("admin_token");
-        const res = await fetch("/api/admin/clients", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password })
-        });
+        const res = await adminFetch("/api/admin/clients", { method: "POST" });
         if (res.ok) {
           const data = await res.json();
           setClients(data.clients || []);
         }
 
-        const resFleet = await fetch("/api/admin/fleet", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password })
-        });
+        const resFleet = await adminFetch("/api/admin/fleet", { method: "POST" });
         if (resFleet.ok) {
           const data = await resFleet.json();
           setFleet(data.fleet || []);
@@ -99,20 +91,14 @@ export default function ClientDirectory({ onTrackAsset }: { onTrackAsset?: (asse
     if (!addForm.name || !addForm.email) { setAddError("Name and Email are required."); return; }
     setIsAdding(true);
     try {
-      const password = sessionStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/clients", {
+      const res = await adminFetch("/api/admin/clients", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, ...addForm })
+        body: JSON.stringify({ ...addForm })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create client");
       // Refresh client list
-      const refreshRes = await fetch("/api/admin/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password })
-      });
+      const refreshRes = await adminFetch("/api/admin/clients", { method: "POST" });
       if (refreshRes.ok) { const d = await refreshRes.json(); setClients(d.clients || []); }
       setAddSuccess(`Client created successfully! ID: ${data.client_id}`);
       setAddForm({ name: "", contact: "", email: "", phone: "" });
@@ -149,7 +135,7 @@ export default function ClientDirectory({ onTrackAsset }: { onTrackAsset?: (asse
     else { setSortField(field); setSortDesc(true); }
   };
 
-  const SortButton = ({ field, label }: { field: SortField; label: string }) => (
+  const renderSortButton = (field: SortField, label: string) => (
     <button
       onClick={() => handleSort(field)}
       className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest transition-colors ${sortField === field ? "text-[#C5A059]" : "text-gray-600 hover:text-gray-400"}`}
@@ -220,14 +206,14 @@ export default function ClientDirectory({ onTrackAsset }: { onTrackAsset?: (asse
             <thead>
               <tr className="bg-[#0A0A0C] border-b border-white/8">
                 <th className="px-6 py-4">
-                  <SortButton field="name" label="Company" />
+                  {renderSortButton("name", "Company")}
                 </th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Contact</th>
                 <th className="px-6 py-4">
-                  <SortButton field="active_rentals" label="Active Units" />
+                  {renderSortButton("active_rentals", "Active Units")}
                 </th>
                 <th className="px-6 py-4">
-                  <SortButton field="total_spent" label="Total Value" />
+                  {renderSortButton("total_spent", "Total Value")}
                 </th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Health</th>
                 <th className="px-6 py-4" />

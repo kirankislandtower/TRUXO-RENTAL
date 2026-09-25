@@ -1,23 +1,60 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/adminAuth';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
-export async function POST(request: Request) {
-  try {
-    const { password } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+const RETURN_LOCATION = 'Main Depot';
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// Placeholder contract value credited to a client each time an asset is assigned.
+const SIMULATED_CONTRACT_VALUE = 50000;
+
+// total_spent is stored as a display string ("AED 50,000", "AED 1.2M").
+function addToTotalSpent(current: string | null | undefined, amount: number): string {
+  let numericVal = 0;
+  if (current) {
+    const currentVal = current.replace('AED ', '').trim();
+    if (currentVal.endsWith('M')) {
+      numericVal = parseFloat(currentVal) * 1000000;
+    } else if (currentVal.endsWith('K')) {
+      numericVal = parseFloat(currentVal) * 1000;
+    } else {
+      numericVal = parseInt(currentVal.replace(/,/g, '')) || 0;
     }
+  }
+  numericVal += amount;
+  if (numericVal >= 1000000) {
+    return `AED ${(numericVal / 1000000).toFixed(1)}M`;
+  }
+  return `AED ${numericVal.toLocaleString()}`;
+}
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// A client "holds" one active rental per Deployed asset. Call this whenever an
+// asset leaves the Deployed state (returned, sent to maintenance, or deleted).
+async function releaseClientRental(supabase: SupabaseClient, clientId: string) {
+  const { data: clientData, error: fetchError } = await supabase
+    .from('clients')
+    .select('active_rentals')
+    .eq('client_id', clientId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!clientData) return;
 
-    if (!supabaseUrl || !serviceRoleKey) {
+  const { error: updateError } = await supabase
+    .from('clients')
+    .update({ active_rentals: Math.max(0, (clientData.active_rentals || 0) - 1) })
+    .eq('client_id', clientId);
+  if (updateError) throw updateError;
+}
+
+export async function POST() {
+  try {
+    const denied = await requireAdmin();
+    if (denied) return denied;
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const { data, error } = await supabaseAdmin
       .from('fleet')
@@ -37,24 +74,21 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { password, action, old_asset_id, asset_id, type, model, image, daily_rent, hourly_rate, client_id, location, new_status } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { action, old_asset_id, asset_id, type, model, image, daily_rent, hourly_rate, client_id, location, new_status } = await request.json();
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    // ── CASE 0: Edit asset details ──────────────────────────────────────────
+    // ── Edit asset details ───────────────────────────────────────────────────
     if (action === 'edit_details') {
+      if (!old_asset_id) {
+        return NextResponse.json({ error: 'old_asset_id is required' }, { status: 400 });
+      }
       const { error: updateError } = await supabaseAdmin
         .from('fleet')
         .update({
@@ -66,102 +100,92 @@ export async function PATCH(request: Request) {
           hourly_rate: parseInt(hourly_rate) || 350
         })
         .eq('asset_id', old_asset_id);
-      
+
       if (updateError) throw updateError;
       return NextResponse.json({ success: true });
     }
 
-    // ── CASE 1: Simple status change (Available ↔ Maintenance) ──────────────
-    if (new_status && new_status !== 'Deployed') {
-      const { error: fleetError } = await supabaseAdmin
-        .from('fleet')
-        .update({ status: new_status })
-        .eq('asset_id', asset_id);
-      if (fleetError) throw fleetError;
-      return NextResponse.json({ success: true });
+    // Every remaining action depends on what the asset is doing right now.
+    if (!asset_id) {
+      return NextResponse.json({ error: 'asset_id is required' }, { status: 400 });
     }
 
-    // ── CASE 2: Return asset from client (Deployed → Available) ──────────────
-    if (new_status === 'Available' || (new_status && client_id === null)) {
-      // Fetch which client currently has this asset
-      const { data: assetData } = await supabaseAdmin
-        .from('fleet')
-        .select('client_id')
-        .eq('asset_id', asset_id)
-        .single();
-
-      const { error: fleetError } = await supabaseAdmin
-        .from('fleet')
-        .update({ status: 'Available', client_id: null, location: 'Main Depot' })
-        .eq('asset_id', asset_id);
-      if (fleetError) throw fleetError;
-
-      // Decrement client's active_rentals
-      if (assetData?.client_id) {
-        const { data: clientData } = await supabaseAdmin
-          .from('clients')
-          .select('active_rentals')
-          .eq('client_id', assetData.client_id)
-          .single();
-        if (clientData) {
-          await supabaseAdmin
-            .from('clients')
-            .update({ active_rentals: Math.max(0, (clientData.active_rentals || 1) - 1) })
-            .eq('client_id', assetData.client_id);
-        }
-      }
-      return NextResponse.json({ success: true });
-    }
-
-    // ── CASE 3: Assign asset to a client (→ Deployed) ────────────────────────
-    const { error: fleetError } = await supabaseAdmin
+    const { data: asset, error: assetError } = await supabaseAdmin
       .from('fleet')
-      .update({ 
-        status: 'Deployed', 
-        client_id: client_id,
-        location: location || 'Client Job Site'
-      })
-      .eq('asset_id', asset_id);
-    if (fleetError) throw fleetError;
-
-    // Fetch current client data
-    const { data: clientData, error: clientFetchError } = await supabaseAdmin
-      .from('clients')
-      .select('active_rentals, total_spent')
-      .eq('client_id', client_id)
-      .single();
-    if (clientFetchError) throw clientFetchError;
-
-    // Simulate AED 50,000 contract per assigned asset
-    let newTotalSpent = "AED 50,000";
-    if (clientData?.total_spent) {
-      let currentVal = clientData.total_spent.replace("AED ", "").trim();
-      let numericVal = 0;
-      if (currentVal.endsWith("M")) {
-        numericVal = parseFloat(currentVal) * 1000000;
-      } else if (currentVal.endsWith("K")) {
-        numericVal = parseFloat(currentVal) * 1000;
-      } else {
-        numericVal = parseInt(currentVal.replace(/,/g, "")) || 0;
-      }
-      numericVal += 50000;
-      if (numericVal >= 1000000) {
-        newTotalSpent = `AED ${(numericVal / 1000000).toFixed(1)}M`;
-      } else {
-        newTotalSpent = `AED ${numericVal.toLocaleString()}`;
-      }
+      .select('status, client_id')
+      .eq('asset_id', asset_id)
+      .maybeSingle();
+    if (assetError) throw assetError;
+    if (!asset) {
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     }
 
-    const { error: clientUpdateError } = await supabaseAdmin
-      .from('clients')
-      .update({ 
-        active_rentals: (clientData?.active_rentals || 0) + 1,
-        total_spent: newTotalSpent
-      })
-      .eq('client_id', client_id);
-    if (clientUpdateError) throw clientUpdateError;
+    // ── Status change: Available / Maintenance ──────────────────────────────
+    // Moving an asset OUT of Deployed (a return, or straight to maintenance)
+    // releases it from its client: clear client_id, send it back to the depot
+    // and decrement the client's active_rentals.
+    if (new_status === 'Available' || new_status === 'Maintenance') {
+      const wasDeployed = asset.status === 'Deployed';
+      const update: Record<string, unknown> = { status: new_status };
+      if (wasDeployed || new_status === 'Available') {
+        update.client_id = null;
+        update.location = RETURN_LOCATION;
+      }
 
-    return NextResponse.json({ success: true });
+      const { error: fleetError } = await supabaseAdmin
+        .from('fleet')
+        .update(update)
+        .eq('asset_id', asset_id);
+      if (fleetError) throw fleetError;
+
+      if (wasDeployed && asset.client_id) {
+        await releaseClientRental(supabaseAdmin, asset.client_id);
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // ── Assign asset to a client (→ Deployed) ────────────────────────────────
+    if ((new_status === undefined || new_status === 'Deployed') && typeof client_id === 'string' && client_id) {
+      if (asset.status !== 'Available') {
+        return NextResponse.json(
+          { error: `Asset is ${asset.status}. Only Available assets can be assigned.` },
+          { status: 409 },
+        );
+      }
+
+      const { data: clientData, error: clientFetchError } = await supabaseAdmin
+        .from('clients')
+        .select('active_rentals, total_spent')
+        .eq('client_id', client_id)
+        .maybeSingle();
+      if (clientFetchError) throw clientFetchError;
+      if (!clientData) {
+        return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+      }
+
+      const { error: fleetError } = await supabaseAdmin
+        .from('fleet')
+        .update({
+          status: 'Deployed',
+          client_id,
+          location: location || 'Client Job Site'
+        })
+        .eq('asset_id', asset_id);
+      if (fleetError) throw fleetError;
+
+      const { error: clientUpdateError } = await supabaseAdmin
+        .from('clients')
+        .update({
+          active_rentals: (clientData.active_rentals || 0) + 1,
+          total_spent: addToTotalSpent(clientData.total_spent, SIMULATED_CONTRACT_VALUE)
+        })
+        .eq('client_id', client_id);
+      if (clientUpdateError) throw clientUpdateError;
+
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   } catch (error: unknown) {
     console.error('Error updating asset:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
@@ -170,21 +194,15 @@ export async function PATCH(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { password, asset_id, type, model, image, location, hours, daily_rent, hourly_rate } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { asset_id, type, model, image, location, hours, daily_rent, hourly_rate } = await request.json();
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     const { error: insertError } = await supabaseAdmin
       .from('fleet')
@@ -211,21 +229,23 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { password, asset_id } = await request.json();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const denied = await requireAdmin();
+    if (denied) return denied;
 
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { asset_id } = await request.json();
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    // Deleting a Deployed asset must also release the client's rental count.
+    const { data: asset, error: assetError } = await supabaseAdmin
+      .from('fleet')
+      .select('status, client_id')
+      .eq('asset_id', asset_id)
+      .maybeSingle();
+    if (assetError) throw assetError;
 
     const { error: deleteError } = await supabaseAdmin
       .from('fleet')
@@ -233,6 +253,10 @@ export async function DELETE(request: Request) {
       .eq('asset_id', asset_id);
 
     if (deleteError) throw deleteError;
+
+    if (asset?.status === 'Deployed' && asset.client_id) {
+      await releaseClientRental(supabaseAdmin, asset.client_id);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

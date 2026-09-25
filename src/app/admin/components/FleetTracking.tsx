@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Truck, Search, Filter, Activity, Settings, Wrench, AlertTriangle, CheckCircle2, X, FileText, Settings2, BarChart3, ActivitySquare, MapPin, ChevronDown, Download, Eye, Upload, Trash2, Edit2, Loader2 } from "lucide-react";
+import { Truck, Search, Filter, Activity, Wrench, CheckCircle2, X, FileText, BarChart3, ActivitySquare, MapPin, ChevronDown, Download, Eye, Upload, Trash2, Edit2, Loader2 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
+import { parseAssetData } from "@/lib/fleetAsset";
 
 export type FleetAsset = {
   asset_id: string;
@@ -10,31 +12,13 @@ export type FleetAsset = {
   client_id: string | null;
   location: string;
   hours: number;
+  image?: string | null;
   daily_rent?: number;
   hourly_rate?: number;
 };
 
-export const parseAssetData = (asset: any) => {
-  let parsedName = asset?.model || "";
-  let parsedBrand = asset?.type || "";
-  let parsedImg = asset?.image || "/images/company_excavator.jpg";
-  try {
-    const json = JSON.parse(asset.model);
-    if (json.name) parsedName = json.name;
-    if (json.brand) parsedBrand = json.brand;
-    if (json.image && !asset?.image) parsedImg = json.image;
-  } catch (e) {
-    if (asset?.model?.includes('||')) {
-      const parts = asset.model.split('||').map((p: string) => p.trim());
-      if (parts.length >= 3) {
-        parsedBrand = parts[0];
-        parsedName = parts[1];
-        if (!asset?.image && parts[2]) parsedImg = parts[2];
-      }
-    }
-  }
-  return { name: parsedName, brand: parsedBrand, image: parsedImg };
-};
+// Only what the per-asset revenue total needs from an invoice row.
+type InvoiceSummary = { equipment?: string | null; amount?: string | number | null };
 
 export type Client = {
   client_id: string;
@@ -46,8 +30,7 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
   const [localAssetId, setLocalAssetId] = useState<string | null>(null);
   const [fleet, setFleet] = useState<FleetAsset[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedClientToAssign, setSelectedClientToAssign] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -60,6 +43,7 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
   const [editAssetForm, setEditAssetForm] = useState({ asset_id: "", brand: "", name: "", image: "", daily_rent: "", hourly_rate: "" });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
     const file = e.target.files?.[0];
@@ -69,18 +53,22 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
     formData.append("file", file);
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (data.url) {
         if (isEdit) {
           setEditAssetForm(prev => ({ ...prev, image: data.url }));
         } else {
           setNewAsset(prev => ({ ...prev, image: data.url }));
         }
+      } else {
+        alert(`Image upload failed: ${data.error || res.statusText}`);
       }
     } catch (err) {
       console.error("Upload failed", err);
+      alert("Image upload failed: network error");
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   };
   const [activeFilter, setActiveFilter] = useState(initialFilter);
@@ -94,11 +82,10 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const password = sessionStorage.getItem("admin_token");
         const [resFleet, resClients, resInvoices] = await Promise.all([
-          fetch("/api/admin/fleet", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-          fetch("/api/admin/clients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-          fetch("/api/admin/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) })
+          adminFetch("/api/admin/fleet", { method: "POST" }),
+          adminFetch("/api/admin/clients", { method: "POST" }),
+          adminFetch("/api/admin/invoices", { method: "POST" })
         ]);
 
         if (resFleet.ok) {
@@ -117,8 +104,6 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
         }
       } catch (err) {
         console.error("Failed to fetch", err);
-      } finally {
-        setIsLoading(false);
       }
     };
     fetchData();
@@ -126,20 +111,35 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
 
   const handleAssign = async () => {
     if (!selectedClientToAssign || !selectedAssetId) return;
+    setIsSubmittingAssign(true);
     try {
-      const password = sessionStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/fleet", {
+      const res = await adminFetch("/api/admin/fleet", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, asset_id: selectedAssetId, client_id: selectedClientToAssign })
+        body: JSON.stringify({ asset_id: selectedAssetId, client_id: selectedClientToAssign })
       });
       if (res.ok) {
-        setFleet(prev => prev.map(f => f.asset_id === selectedAssetId ? { ...f, status: 'Deployed', client_id: selectedClientToAssign } : f));
+        setFleet(prev => prev.map(f => f.asset_id === selectedAssetId ? { ...f, status: 'Deployed', client_id: selectedClientToAssign, location: 'Client Job Site' } : f));
         setIsAssigning(false);
+        setSelectedClientToAssign("");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(`Failed to assign asset: ${data.error || res.statusText}`);
       }
     } catch (error) {
       console.error(error);
+      alert("Failed to assign asset: network error");
+    } finally {
+      setIsSubmittingAssign(false);
     }
+  };
+
+  // Closing must reset the per-asset panels, otherwise the next asset you open
+  // inherits the previous one's half-open edit form or assign picker.
+  const closeAssetModal = () => {
+    setSelectedAssetId(null);
+    setIsEditingAsset(false);
+    setIsAssigning(false);
+    setSelectedClientToAssign("");
   };
 
   const handleAddAsset = async (e: React.FormEvent) => {
@@ -148,14 +148,26 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
     try {
       const generatedAssetId = `AST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       const finalAsset = { ...newAsset, asset_id: generatedAssetId };
-      const password = sessionStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/fleet", {
+      const res = await adminFetch("/api/admin/fleet", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, ...finalAsset, type: finalAsset.brand, model: `${finalAsset.brand}||${finalAsset.name}||${finalAsset.image}`, image: finalAsset.image })
+        body: JSON.stringify({ ...finalAsset, type: finalAsset.brand, model: `${finalAsset.brand}||${finalAsset.name}||${finalAsset.image}`, image: finalAsset.image })
       });
       if (res.ok) {
-        setFleet(prev => [{ ...newAsset, asset_id: generatedAssetId, type: newAsset.brand, model: `${newAsset.brand}||${newAsset.name}||${newAsset.image}`, status: 'Available', client_id: null } as any, ...prev]);
+        // Mirror what the server stored (it defaults location/hours/rates), so the
+        // new card has every field the list and search rely on.
+        const created: FleetAsset = {
+          asset_id: generatedAssetId,
+          type: newAsset.brand,
+          model: `${newAsset.brand}||${newAsset.name}||${newAsset.image}`,
+          image: newAsset.image,
+          status: 'Available',
+          client_id: null,
+          location: 'Main Depot',
+          hours: 0,
+          daily_rent: parseInt(newAsset.daily_rent) || 1200,
+          hourly_rate: parseInt(newAsset.hourly_rate) || 350,
+        };
+        setFleet(prev => [created, ...prev]);
         setShowAddModal(false);
         setNewAsset({ asset_id: "", brand: "", name: "", image: "", daily_rent: "", hourly_rate: "" });
       } else {
@@ -174,15 +186,12 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
     if (!selectedAssetId) return;
     setIsSavingEdit(true);
     try {
-      const password = sessionStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/fleet", {
+      const res = await adminFetch("/api/admin/fleet", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          password, 
-          action: "edit_details", 
-          old_asset_id: selectedAssetId, 
-          ...editAssetForm, type: editAssetForm.brand, model: `${editAssetForm.brand}||${editAssetForm.name}||${editAssetForm.image}` 
+        body: JSON.stringify({
+          action: "edit_details",
+          old_asset_id: selectedAssetId,
+          ...editAssetForm, type: editAssetForm.brand, model: `${editAssetForm.brand}||${editAssetForm.name}||${editAssetForm.image}`
         })
       });
       if (res.ok) {
@@ -212,15 +221,13 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
   const handleDeleteAsset = async (asset_id: string) => {
     setIsDeleting(true);
     try {
-      const password = sessionStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/fleet", {
+      const res = await adminFetch("/api/admin/fleet", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, asset_id })
+        body: JSON.stringify({ asset_id })
       });
       if (res.ok) {
         setFleet(prev => prev.filter(f => f.asset_id !== asset_id));
-        if (selectedAssetId === asset_id) setSelectedAssetId(null);
+        if (selectedAssetId === asset_id) closeAssetModal();
         setDeleteConfirmAsset(null);
       } else {
         alert("Failed to delete asset");
@@ -235,11 +242,9 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
   const handleStatusChange = async (asset_id: string, new_status: string) => {
     setIsChangingStatus(true);
     try {
-      const password = sessionStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/fleet", {
+      const res = await adminFetch("/api/admin/fleet", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, asset_id, new_status })
+        body: JSON.stringify({ asset_id, new_status })
       });
       if (res.ok) {
         setFleet(prev => prev.map(f => {
@@ -365,7 +370,7 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
       {/* Fleet Grid */}
       {filteredFleet.length === 0 ? (
         <div className="p-10 text-center text-gray-500 bg-[#111113]/50 rounded-2xl border border-white/10">
-          No equipment found matching "{searchQuery}"
+          No equipment found matching &quot;{searchQuery}&quot;
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -414,7 +419,7 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
             {/* Backdrop */}
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setSelectedAssetId(null)}
+              onClick={closeAssetModal}
               className="absolute inset-0 bg-[#050505]/80 backdrop-blur-sm"
             />
             
@@ -450,10 +455,7 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
                   <button onClick={() => setDeleteConfirmAsset(selectedAsset.asset_id)} className="p-2 rounded-full hover:bg-[#A51A1A]/10 text-[#A51A1A] transition-colors group">
                     <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                   </button>
-                  <button onClick={() => {
-                    setSelectedAssetId(null);
-                    setIsEditingAsset(false);
-                  }} className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                  <button onClick={closeAssetModal} className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
@@ -542,6 +544,59 @@ export default function FleetTracking({ activeAssetId, setActiveAssetId, initial
                     )}
                   </div>
                 </div>
+
+                {/* Assignment */}
+                <section>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-xs uppercase tracking-widest font-black text-gray-400 flex items-center gap-2"><MapPin className="w-4 h-4" /> Assignment</h4>
+                    {selectedAsset.status === 'Available' && (
+                      <button
+                        onClick={() => setIsAssigning(!isAssigning)}
+                        className="text-[10px] bg-[#C5A059]/20 text-[#C5A059] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-[#C5A059]/30 transition-colors"
+                      >
+                        {isAssigning ? "Cancel" : "Assign Asset"}
+                      </button>
+                    )}
+                  </div>
+
+                  {isAssigning ? (
+                    <div className="bg-[#1A1C23]/80 rounded-xl p-5 border border-[#C5A059]/30">
+                      <p className="text-sm text-gray-300 font-medium mb-3">Select a Client for Deployment:</p>
+                      <select
+                        value={selectedClientToAssign}
+                        onChange={(e) => setSelectedClientToAssign(e.target.value)}
+                        className="w-full bg-[#111113] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C5A059]/50 mb-4"
+                      >
+                        <option value="">-- Choose Client --</option>
+                        {clients.map(c => (
+                          <option key={c.client_id} value={c.client_id}>{c.name} ({c.client_id})</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleAssign}
+                        disabled={!selectedClientToAssign || isSubmittingAssign}
+                        className="w-full py-3 bg-[#C5A059] hover:bg-[#b08d4a] text-[#12131A] font-black rounded-lg uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isSubmittingAssign ? "Assigning..." : "Confirm Assignment"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 bg-[#1A1C23]/50 rounded-xl p-4 border border-white/5">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                        <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Assigned Client</span>
+                        <span className="text-white font-bold">
+                          {selectedAsset.client_id
+                            ? clients.find(c => c.client_id === selectedAsset.client_id)?.name ?? selectedAsset.client_id
+                            : "-"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Location</span>
+                        <span className="text-white font-bold">{selectedAsset.location}</span>
+                      </div>
+                    </div>
+                  )}
+                </section>
 
                 <section>
                   <h4 className="text-xs uppercase tracking-widest font-black text-gray-400 mb-4 flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Financials</h4>

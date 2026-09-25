@@ -5,6 +5,10 @@ import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import { MapPin, Info, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { parseAssetData, type AssetSource } from "@/lib/fleetAsset";
+
+// A row from /api/fleet (public columns only).
+type FleetRow = AssetSource & { asset_id: string; location?: string | null };
 
 type ParsedAsset = {
   id: string;
@@ -28,34 +32,13 @@ export default function FleetPage() {
         const res = await fetch('/api/fleet');
         const data = await res.json();
         if (res.ok && data.fleet) {
-          const parsed = data.fleet.map((item: any) => {
-            let parsedName = item.model;
-            let parsedBrand = item.type;
-            let parsedImg = item.image || "/images/company_excavator.jpg"; // Native image column priority
-            
-            try {
-              // Try to parse if it's stored as JSON
-              const json = JSON.parse(item.model);
-              if (json.name) parsedName = json.name;
-              if (json.brand) parsedBrand = json.brand;
-              if (json.image && !item.image) parsedImg = json.image;
-            } catch (e) {
-              // Fallback to legacy string format if not JSON
-              if (item.model.includes('||')) {
-                const parts = item.model.split('||').map((p: string) => p.trim());
-                if (parts.length >= 3) {
-                  parsedBrand = parts[0];
-                  parsedName = parts[1];
-                  if (!item.image && parts[2]) parsedImg = parts[2];
-                }
-              }
-            }
-            
+          const parsed: ParsedAsset[] = (data.fleet as FleetRow[]).map((item) => {
+            const { brand, name, image } = parseAssetData(item);
             return {
               id: item.asset_id,
-              brand: parsedBrand,
-              name: parsedName,
-              image: parsedImg,
+              brand,
+              name,
+              image,
               location: item.location || "Dubai"
             };
           });
@@ -149,7 +132,8 @@ export default function FleetPage() {
                   >
                     {/* Visual Header with Edge-to-Edge Image */}
                     <div className="relative h-56 w-full overflow-hidden">
-                      {/* Using standard img for external URLs if they are used, or Next Image if local */}
+                      {/* Plain <img> on purpose: admins can paste any URL or path, and next/image throws (and would break this whole page) for hosts it isn't configured for. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img 
                         src={item.image} 
                         alt={item.name} 

@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  TrendingUp, Users, Truck, DollarSign, BarChart3, PieChart, Zap,
-  ArrowUp, ArrowDown, Calendar, Package
+  TrendingUp, Users, Truck, DollarSign, BarChart3, PieChart,
+  Zap, ArrowUp, Calendar, Package
 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
 
 type Client = {
   client_id: string;
@@ -57,12 +58,11 @@ export default function Analytics() {
   useEffect(() => {
     const load = async () => {
       try {
-        const password = sessionStorage.getItem("admin_token");
         const [resC, resF, resR, resI] = await Promise.all([
-          fetch("/api/admin/clients",  { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-          fetch("/api/admin/fleet",    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-          fetch("/api/admin/requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
-          fetch("/api/admin/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) })
+          adminFetch("/api/admin/clients", { method: "POST" }),
+          adminFetch("/api/admin/fleet", { method: "POST" }),
+          adminFetch("/api/admin/requests", { method: "POST" }),
+          adminFetch("/api/admin/invoices", { method: "POST" })
         ]);
         if (resC.ok) { const d = await resC.json(); setClients(d.clients || []); }
         if (resF.ok) { const d = await resF.json(); setFleet(d.fleet || []); }

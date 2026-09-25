@@ -1,65 +1,53 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 
+// How long the branded splash stays fully visible before it fades out (ms).
+// It is applied as the CSS animation delay, so it also works without JS.
+const SPLASH_HOLD_MS = 1200;
+const SPLASH_FADE_MS = 400;
+
+// Module scope: survives client-side navigations, resets on a full page load.
+// Only ever written from the browser, so it is never shared between server requests.
+let splashPlayed = false;
 
 export default function Template({ children }: { children: React.ReactNode }) {
-  const [loading, setLoading] = useState(true);
   const pathname = usePathname();
+  const isAdmin = pathname.startsWith("/admin");
 
-  // Reset and trigger loading sequence on every route change
+  // Next remounts this template on every route change. Previously that replayed a
+  // 2s full-screen loader on every navigation and hid the page (opacity 0) until it
+  // finished, so we only play it once per page load, never on /admin, and never
+  // hide the content itself.
+  const [showSplash, setShowSplash] = useState(() => !splashPlayed && !isAdmin);
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    // Give it a full 2000ms to allow video initialization
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
+    if (!showSplash) return;
+    splashPlayed = true;
+    const timer = setTimeout(() => setShowSplash(false), SPLASH_HOLD_MS + SPLASH_FADE_MS);
     return () => clearTimeout(timer);
-  }, [pathname]);
+  }, [showSplash]);
 
   return (
     <>
-      <AnimatePresence mode="wait">
-        {loading && (
-          <motion.div
-            key="loader"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.4, ease: "easeInOut" } }}
-            className="fixed inset-0 z-[9999] bg-[#050505] flex items-center justify-center"
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center gap-6"
-            >
-              {/* Premium Gold Spinner with Logo */}
-              <div className="relative flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full border-4 border-white/5" />
-                <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-transparent border-t-[#C5A059] border-r-[#C5A059] animate-spin" />
-                <Image src="/logo.jpeg" width={96} height={96} alt="Truxo Logo" className="absolute w-16 h-16 md:w-24 md:h-24 object-contain rounded-full border border-white/10" />
-              </div>
-              <span className="font-orbitron font-black text-white text-sm tracking-[0.3em] uppercase animate-pulse">
-                {/* Truxo */}
-              </span>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showSplash && (
+        <div
+          aria-hidden="true"
+          className="splash-overlay fixed inset-0 z-[9999] bg-[#050505] flex items-center justify-center"
+          style={{ animationDelay: `${SPLASH_HOLD_MS}ms`, animationDuration: `${SPLASH_FADE_MS}ms` }}
+        >
+          {/* Premium Gold Spinner with Logo */}
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+            <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-transparent border-t-[#C5A059] border-r-[#C5A059] animate-spin" />
+            <Image src="/logo.jpeg" width={96} height={96} alt="" priority className="absolute w-16 h-16 md:w-24 md:h-24 object-contain rounded-full border border-white/10" />
+          </div>
+        </div>
+      )}
 
-      <motion.div
-        key="content"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: loading ? 0 : 1, y: loading ? 15 : 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="w-full h-full"
-      >
-        {children}
-      </motion.div>
+      <div className="w-full h-full">{children}</div>
     </>
   );
 }

@@ -2,10 +2,10 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Settings, User, Bell, Shield, Download, Database, 
-  ToggleLeft, ToggleRight, ChevronRight, Info, 
-  LogOut, Mail, Phone, Globe, Server, Cpu, HardDrive,
-  Wifi, Check, AlertCircle, FileText, Truck, Users
+  User, Bell, Shield, Download, Database, ToggleLeft,
+  ToggleRight, Info, LogOut, Mail, Phone, Globe,
+  Server, Cpu, HardDrive, Wifi, Check, FileText,
+  Truck, Users
 } from "lucide-react";
 
 interface SystemSettingsProps {
@@ -162,7 +162,7 @@ export default function SystemSettings({ onLogout }: SystemSettingsProps) {
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <p className="text-sm font-bold text-white">Authentication Token</p>
-                          <p className="text-xs text-gray-500 mt-0.5">Session-based password auth via ADMIN_PASSWORD env var</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Password sign-in (ADMIN_PASSWORD env var) with a signed, httpOnly session cookie</p>
                         </div>
                         <span className="px-2 py-0.5 rounded-md bg-[#25D366]/10 border border-[#25D366]/20 text-[10px] font-black text-[#25D366]">Active</span>
                       </div>
@@ -171,7 +171,7 @@ export default function SystemSettings({ onLogout }: SystemSettingsProps) {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-bold text-white">Current Session</p>
-                          <p className="text-xs text-gray-500 mt-0.5">Session token stored in sessionStorage (cleared on tab close)</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Signed session cookie, expires after 8 hours or on sign-out</p>
                         </div>
                         <div className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
                       </div>

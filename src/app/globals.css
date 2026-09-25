@@ -31,6 +31,20 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Branded splash (src/app/template.tsx). Driven entirely by CSS so it always
+   clears on its own, even before hydration or with JS disabled. */
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.splash-overlay {
+  animation: splash-out 0.4s ease-in-out forwards;
+  pointer-events: none;
+}
+
 html {
   /* Lenis handles smooth scrolling; native scroll-behavior: smooth conflicts with Next.js router */
 }

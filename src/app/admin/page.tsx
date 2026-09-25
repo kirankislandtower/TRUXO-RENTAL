@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Lock, LogOut, Search, Loader2, Calendar, User, Mail, Wrench,
-  Inbox, LayoutDashboard, Truck, Settings, Bell, Filter,
-  MoreVertical, CheckCircle2, TrendingUp, Users, Activity, Clock,
-  Trash2, Home, X, BarChart3, DollarSign, ChevronRight,
-  AlertTriangle, Receipt, Package, Zap, ArrowRight, Eye, Phone, MapPin
+  Lock, LogOut, Loader2, Mail, Inbox, LayoutDashboard,
+  Truck, Settings, Bell, MoreVertical, CheckCircle2, Users,
+  Activity, Clock, Trash2, X, BarChart3, AlertTriangle,
+  Receipt, Eye, Phone
 } from "lucide-react";
 import FleetTracking from "./components/FleetTracking";
 import ClientDirectory from "./components/ClientDirectory";
@@ -16,6 +14,10 @@ import Analytics from "./components/Analytics";
 import Overview from "./components/Overview";
 import SystemSettings from "./components/SystemSettings";
 import Invoices from "./components/Invoices";
+import { adminFetch, ADMIN_UNAUTHORIZED_EVENT } from "@/lib/adminFetch";
+import { parseContactRequest } from "@/lib/contactRequest";
+
+type DispatchFilter = "All" | "Pending" | "Approved" | "Rejected";
 
 type ActiveTab = "overview" | "dispatch" | "fleet" | "clients" | "analytics" | "invoices" | "settings";
 
@@ -52,15 +54,16 @@ export default function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   const [requests, setRequests] = useState<ContactRequest[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
   const [fleetAssetId, setFleetAssetId] = useState<string | null>(null);
   const [initialFleetFilter, setInitialFleetFilter] = useState("All");
-  const [dispatchFilter, setDispatchFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
+  const [dispatchFilter, setDispatchFilter] = useState<DispatchFilter>("All");
   const [selectedRequest, setSelectedRequest] = useState<ContactRequest | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [lastReadPendingCount, setLastReadPendingCount] = useState(0);
@@ -80,7 +83,7 @@ export default function AdminDashboard() {
   const handleNavigate = (tab: ActiveTab, filter?: string) => {
     setActiveTab(tab);
     if (tab === "fleet") setInitialFleetFilter(filter || "All");
-    if (tab === "dispatch") setDispatchFilter((filter as any) || "All");
+    if (tab === "dispatch") setDispatchFilter((filter as DispatchFilter | undefined) ?? "All");
   };
 
   // Toast system
@@ -98,10 +101,9 @@ export default function AdminDashboard() {
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch("/api/admin/requests", {
+      const res = await adminFetch("/api/admin/requests", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, id })
+        body: JSON.stringify({ id })
       });
       if (res.ok) {
         setRequests(prev => prev.filter(req => req.id !== id));
@@ -117,51 +119,79 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleApprove = async (id: number) => {
+  // Resolves true only when the server confirmed the change, so callers can
+  // hold back the customer notification until the approval really happened.
+  const handleApprove = async (id: number): Promise<boolean> => {
     try {
-      const res = await fetch("/api/admin/requests", {
+      const res = await adminFetch("/api/admin/requests", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, id, status: "Approved" })
+        body: JSON.stringify({ id, status: "Approved" })
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setRequests(prev => prev.map(req => req.id === id ? { ...req, status: "Approved" } : req));
-        showToast("success", "Request approved. Client account created.");
-      } else {
-        const errData = await res.json();
-        showToast("error", errData.error || "Approval failed.");
+        showToast(
+          "success",
+          data.client_created
+            ? `Request approved. Client account ${data.client_id} created.`
+            : `Request approved. Existing client ${data.client_id} linked.`
+        );
+        return true;
       }
+      showToast("error", data.error || "Approval failed.");
+      return false;
     } catch (err: unknown) {
       showToast("error", "Network Error: " + (err instanceof Error ? err.message : String(err)));
+      return false;
     } finally {
       setActiveDropdown(null);
     }
   };
 
-  const handleReject = async (id: number) => {
+  const handleReject = async (id: number): Promise<boolean> => {
     try {
-      const res = await fetch("/api/admin/requests", {
+      const res = await adminFetch("/api/admin/requests", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, id, status: "Rejected" })
+        body: JSON.stringify({ id, status: "Rejected" })
       });
       if (res.ok) {
         setRequests(prev => prev.map(req => req.id === id ? { ...req, status: "Rejected" } : req));
         showToast("info", "Request rejected.");
-      } else {
-        const errData = await res.json();
-        showToast("error", errData.error || "Rejection failed.");
+        return true;
       }
+      const errData = await res.json().catch(() => ({}));
+      showToast("error", errData.error || "Rejection failed.");
+      return false;
     } catch (err: unknown) {
       showToast("error", "Network Error: " + (err instanceof Error ? err.message : String(err)));
+      return false;
     } finally {
       setActiveDropdown(null);
     }
   };
 
-  const handleWhatsAppClient = (req: ContactRequest, type: 'Reply' | 'Approve' | 'Reject') => {
+  // Approve/reject, then open the customer's email or WhatsApp draft only if it
+  // worked. A blank tab is opened synchronously (inside the click) so popup
+  // blockers allow it, then pointed at the message once the API call succeeds.
+  const decideAndNotify = async (
+    req: ContactRequest,
+    decision: "Approve" | "Reject",
+    channel: "email" | "whatsapp"
+  ) => {
+    const draft = window.open("", "_blank");
+    const succeeded = decision === "Approve" ? await handleApprove(req.id) : await handleReject(req.id);
+    if (!succeeded) {
+      draft?.close();
+      return;
+    }
+    const url = channel === "email" ? getEmailUrl(req, decision) : getWhatsAppUrl(req, decision);
+    if (draft) draft.location.href = url;
+    else window.open(url, "_blank");
+  };
+
+  const getWhatsAppUrl = (req: ContactRequest, type: 'Reply' | 'Approve' | 'Reject') => {
     let msg = `Hi ${req.first_name},\n\n`;
-    
+
     if (type === 'Approve') {
       msg += `Good news from TRUXO! Your equipment request for:\n"${req.equipment_required}"\nhas been approved.\n\nOur team will be in touch shortly with the next steps.`;
     } else if (type === 'Reject') {
@@ -169,15 +199,15 @@ export default function AdminDashboard() {
     } else {
       msg += `This is the TRUXO Team regarding your equipment request for:\n"${req.equipment_required}"\n\n`;
     }
-    
+
     msg += `\n\nBest regards,\nThe TRUXO Team\n🌐 Visit us at: https://truxo.ae`;
-    window.open(`https://wa.me/${(req.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+    return `https://wa.me/${(req.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`;
   };
 
-  const handleEmailClient = (req: ContactRequest, type: 'Reply' | 'Approve' | 'Reject') => {
+  const getEmailUrl = (req: ContactRequest, type: 'Reply' | 'Approve' | 'Reject') => {
     let subject = "Update on your TRUXO Equipment Request";
     let body = `Hello ${req.first_name},\n\n`;
-    
+
     if (type === 'Approve') {
       subject = "TRUXO Request Approved!";
       body += `Good news from TRUXO! Your equipment request for "${req.equipment_required}" has been approved.\n\nOur team will be in touch shortly with the next steps.`;
@@ -187,63 +217,89 @@ export default function AdminDashboard() {
     } else {
       body += `This is the TRUXO Team regarding your equipment request for "${req.equipment_required}":\n\n`;
     }
-    
+
     body += `\n\nBest regards,\nThe TRUXO Team\nadmin@truxo.ae\n🌐 Visit us at: https://truxo.ae`;
-    
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(req.email)}&cc=admin@truxo.ae&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(gmailUrl, '_blank');
+
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(req.email)}&cc=admin@truxo.ae&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  const fetchRequests = async (pass: string) => {
+  const handleEmailClient = (req: ContactRequest, type: 'Reply' | 'Approve' | 'Reject') => {
+    window.open(getEmailUrl(req, type), '_blank');
+  };
+
+  // Fetches the dispatch requests, or null when the API refuses (no valid session
+  // cookie -> 401). That makes it double as the "am I signed in?" check.
+  const fetchRequests = async (): Promise<ContactRequest[] | null> => {
+    const res = await fetch("/api/admin/requests", { method: "POST", credentials: "same-origin" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.requests || []).map((req: ContactRequest) => parseContactRequest(req));
+  };
+
+  const loadRequests = async (): Promise<boolean> => {
+    const loaded = await fetchRequests();
+    if (!loaded) return false;
+    setRequests(loaded);
+    setIsAuthenticated(true);
+    return true;
+  };
+
+  // Restore an existing session (httpOnly cookie) after a refresh.
+  useEffect(() => {
+    let active = true;
+    fetchRequests()
+      .then((loaded) => {
+        if (!active || !loaded) return;
+        setRequests(loaded);
+        setIsAuthenticated(true);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setIsCheckingSession(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Any admin API call that comes back 401 (session expired) lands here.
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setIsAuthenticated(false);
+      setRequests([]);
+      setLoginError("Your session has expired. Please sign in again.");
+    };
+    window.addEventListener(ADMIN_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(ADMIN_UNAUTHORIZED_EVENT, onUnauthorized);
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoggingIn(true);
     setLoginError("");
     try {
-      const res = await fetch("/api/admin/requests", {
+      const res = await fetch("/api/admin/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: pass })
+        body: JSON.stringify({ password })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Login failed");
-      
-      const parsedRequests = (data.requests || []).map((req: any) => {
-        const match = req.equipment_required?.match(/^\[Phone: (.*?)\] \[Address: (.*?)\]\n\n([\s\S]*)$/);
-        if (match) {
-          return { ...req, phone: match[1], address: match[2], equipment_required: match[3] };
-        }
-        return req;
-      });
-      
-      setRequests(parsedRequests);
-      setIsAuthenticated(true);
-      sessionStorage.setItem("admin_token", pass);
+
+      setPassword("");
+      if (!(await loadRequests())) throw new Error("Signed in, but the dashboard data could not be loaded.");
     } catch (err: unknown) {
       setLoginError(err instanceof Error ? err.message : String(err));
-      sessionStorage.removeItem("admin_token");
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  useEffect(() => {
-    const savedPassword = sessionStorage.getItem("admin_token");
-    if (savedPassword) {
-      setPassword(savedPassword);
-      fetchRequests(savedPassword);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchRequests(password);
-  };
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch("/api/admin/session", { method: "DELETE" }).catch(() => undefined);
     setIsAuthenticated(false);
     setPassword("");
     setRequests([]);
-    sessionStorage.removeItem("admin_token");
   };
 
   const filteredRequests = requests.filter(req => {
@@ -282,6 +338,14 @@ export default function AdminDashboard() {
       ]
     }
   ];
+
+  if (isCheckingSession) {
+    return (
+      <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+      </main>
+    );
+  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // LOGIN SCREEN
@@ -545,7 +609,7 @@ export default function AdminDashboard() {
                       { label: "Total Inquiries", value: requests.length, icon: Activity, trend: "All time" },
                       { label: "Pending Review",  value: pendingCount,   icon: Clock,    trend: "Requires action", highlight: pendingCount > 0 },
                       { label: "Approved Clients",value: requests.filter(r => r.status === "Approved").length, icon: CheckCircle2, trend: "Accounts active" },
-                    ].map((kpi, i) => (
+                    ].map((kpi) => (
                       <div key={kpi.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
                         <div className="flex justify-between items-start mb-4">
                           <div className={`p-2 rounded-lg ${kpi.highlight ? 'bg-[#C5A059]/10 text-[#C5A059]' : 'bg-zinc-800 text-zinc-400'}`}>
@@ -597,7 +661,7 @@ export default function AdminDashboard() {
                                   <p className="text-zinc-500 text-sm mt-1">Try adjusting your filters or search terms.</p>
                                 </td>
                               </motion.tr>
-                            ) : filteredRequests.map((req, index) => (
+                            ) : filteredRequests.map((req) => (
                               <motion.tr key={req.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
                                 onClick={() => setSelectedRequest(req)}
                                 className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors cursor-pointer"
@@ -721,17 +785,17 @@ export default function AdminDashboard() {
                               
                               {selectedRequest.status !== "Approved" && selectedRequest.status !== "Rejected" && (
                                 <div className="grid grid-cols-2 gap-3 mt-2">
-                                  <button onClick={() => { handleApprove(selectedRequest.id); handleEmailClient(selectedRequest, 'Approve'); setSelectedRequest(null); }} className="py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] uppercase tracking-widest hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2">
+                                  <button onClick={() => { decideAndNotify(selectedRequest, 'Approve', 'email'); setSelectedRequest(null); }} className="py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] uppercase tracking-widest hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2">
                                     <Mail className="w-3 h-3" /> Approve (Email)
                                   </button>
-                                  <button onClick={() => { handleApprove(selectedRequest.id); handleWhatsAppClient(selectedRequest, 'Approve'); setSelectedRequest(null); }} className="py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] uppercase tracking-widest hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2">
+                                  <button onClick={() => { decideAndNotify(selectedRequest, 'Approve', 'whatsapp'); setSelectedRequest(null); }} className="py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] uppercase tracking-widest hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2">
                                     <Phone className="w-3 h-3" /> Approve (WA)
                                   </button>
                                   
-                                  <button onClick={() => { handleReject(selectedRequest.id); handleEmailClient(selectedRequest, 'Reject'); setSelectedRequest(null); }} className="py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[10px] uppercase tracking-widest hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2">
+                                  <button onClick={() => { decideAndNotify(selectedRequest, 'Reject', 'email'); setSelectedRequest(null); }} className="py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[10px] uppercase tracking-widest hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2">
                                     <Mail className="w-3 h-3" /> Reject (Email)
                                   </button>
-                                  <button onClick={() => { handleReject(selectedRequest.id); handleWhatsAppClient(selectedRequest, 'Reject'); setSelectedRequest(null); }} className="py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[10px] uppercase tracking-widest hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2">
+                                  <button onClick={() => { decideAndNotify(selectedRequest, 'Reject', 'whatsapp'); setSelectedRequest(null); }} className="py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[10px] uppercase tracking-widest hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2">
                                     <Phone className="w-3 h-3" /> Reject (WA)
                                   </button>
                                 </div>

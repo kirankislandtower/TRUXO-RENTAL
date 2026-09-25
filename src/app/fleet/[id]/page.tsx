@@ -2,9 +2,9 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import VehicleViewer from "@/components/ui/VehicleViewer";
-import { ChevronRight, Calendar, MapPin, ActivitySquare, CheckCircle2, ArrowLeft, ArrowRight, ShieldCheck, Factory, Banknote, Clock } from "lucide-react";
+import { MapPin, ActivitySquare, CheckCircle2, ArrowLeft, ArrowRight, ShieldCheck, Factory } from "lucide-react";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -12,20 +12,17 @@ type Props = {
 
 import type { Metadata } from "next";
 
-// Helper to get supabase client
-const getSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) return null;
-  return createClient(supabaseUrl, serviceRoleKey);
-};
+// This page uses the service-role client, so only select the columns it
+// actually renders (never `*`, which would pull internal fields like client_id).
+const VEHICLE_COLUMNS = "asset_id, type, model, image, location, status";
+const getSupabase = getSupabaseAdmin;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const supabase = getSupabase();
   if (!supabase) return { title: "Error" };
 
-  const { data: vehicle } = await supabase.from('fleet').select('*').eq('asset_id', id).single();
+  const { data: vehicle } = await supabase.from('fleet').select(VEHICLE_COLUMNS).eq('asset_id', id).single();
   
   if (!vehicle) return { title: "Equipment Not Found" };
   
@@ -35,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const json = JSON.parse(vehicle.model);
     if (json.name) parsedName = json.name;
     if (json.brand) parsedBrand = json.brand;
-  } catch(e) {
+  } catch {
     if (vehicle.model?.includes("||")) {
       const parts = vehicle.model.split("||");
       parsedBrand = parts[0];
@@ -59,7 +56,7 @@ export default async function FleetSpecPage({ params }: Props) {
     return <div>Database connection error</div>;
   }
 
-  const { data: vehicle, error } = await supabase.from('fleet').select('*').eq('asset_id', id).single();
+  const { data: vehicle, error } = await supabase.from('fleet').select(VEHICLE_COLUMNS).eq('asset_id', id).single();
 
   if (error || !vehicle) {
     notFound();
@@ -72,7 +69,7 @@ export default async function FleetSpecPage({ params }: Props) {
     const json = JSON.parse(vehicle.model);
     if (json.name) parsedName = json.name;
     if (json.brand) parsedBrand = json.brand;
-  } catch(e) {
+  } catch {
     if (vehicle.model?.includes("||")) {
       const parts = vehicle.model.split("||");
       parsedBrand = parts[0];
@@ -85,7 +82,7 @@ export default async function FleetSpecPage({ params }: Props) {
   const imageSrc = vehicle.image || "/images/company_excavator.jpg";
 
   // Fetch 3 other random vehicles for recommendations
-  const { data: recommendations } = await supabase.from('fleet').select('*').neq('asset_id', id).limit(3);
+  const { data: recommendations } = await supabase.from('fleet').select('asset_id, type, model, image').neq('asset_id', id).limit(3);
 
   return (
     <main className="min-h-screen bg-[#050505] text-[#F5F2EB] font-sans pb-24 md:pb-0 selection:bg-[#C5A059] selection:text-[#12131A]">
@@ -259,7 +256,7 @@ export default async function FleetSpecPage({ params }: Props) {
                   const json = JSON.parse(rec.model);
                   if (json.name) recName = json.name;
                   if (json.brand) recBrand = json.brand;
-                } catch(e) {
+                } catch {
                   if (rec.model?.includes("||")) {
                     const parts = rec.model.split("||");
                     recBrand = parts[0];

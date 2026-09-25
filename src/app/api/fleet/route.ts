@@ -1,20 +1,22 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+
+// Public endpoint: only ever expose what the website needs to render. It uses
+// the service-role client, so `select('*')` here would leak internal columns
+// (client_id, rates, engine hours) to anyone who calls it.
+const PUBLIC_FLEET_COLUMNS = 'asset_id, type, model, image, location, status';
 
 export async function GET() {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseAdmin = getSupabaseAdmin();
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
     const { data, error } = await supabaseAdmin
       .from('fleet')
-      .select('*')
+      .select(PUBLIC_FLEET_COLUMNS)
       .order('created_at', { ascending: false });
 
     if (error) {
