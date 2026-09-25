@@ -3,6 +3,9 @@ import { Inter, Archivo, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import ConditionalLayout from "@/components/layout/ConditionalLayout";
+import JsonLd from "@/components/seo/JsonLd";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/site";
+import { siteJsonLd } from "@/lib/seo";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,32 +28,51 @@ const jetbrainsMono = JetBrains_Mono({
   preload: false
 });
 
+const DEFAULT_DESCRIPTION =
+  "Rent excavators, forklifts, wheel shovels, cranes and trucks across Dubai and the UAE. Inspected, serviced equipment on flexible terms. Get a quote today.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://truxo.ae"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    template: "%s | TRUXO Heavy Equipment Rental Dubai",
-    default: "TRUXO Dubai | Heavy Equipment Rental UAE"
+    default: "Heavy Equipment Rental Dubai & UAE | TRUXO",
+    template: "%s | TRUXO",
   },
-  description: "TRUXO provides reliable heavy equipment rental solutions in Dubai and across the UAE. Excavators, forklifts, loaders, and construction machinery.",
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
   keywords: [
-    "TRUXO", 
-    "TRUXO Dubai", 
-    "heavy equipment rental Dubai", 
-    "construction machinery UAE", 
-    "excavator rental Dubai", 
-    "forklift rental UAE", 
-    "TRUXO equipment rental", 
-    "industrial equipment rental"
+    "heavy equipment rental Dubai",
+    "excavator rental Dubai",
+    "forklift rental UAE",
+    "crane rental Dubai",
+    "wheel loader rental UAE",
+    "construction equipment rental UAE",
+    "TRUXO",
   ],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  // Each route sets its own canonical; this one is the home page's.
+  alternates: { canonical: "/" },
   openGraph: {
-    title: "TRUXO Dubai | Heavy Equipment Rental",
-    description: "TRUXO provides reliable heavy equipment rental solutions in Dubai and across the UAE. Excavators, forklifts, loaders, and construction machinery.",
-    url: "https://truxo.ae",
-    siteName: "TRUXO",
-    images: [{ url: "/logo.jpeg", width: 800, height: 600, alt: "TRUXO Logo" }],
-    locale: "en_AE",
     type: "website",
-  }
+    url: "/",
+    siteName: SITE_NAME,
+    locale: "en_AE",
+    title: "Heavy Equipment Rental Dubai & UAE | TRUXO",
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Heavy Equipment Rental Dubai & UAE | TRUXO",
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE.url],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  },
 };
 
 export default function RootLayout({
@@ -71,27 +93,8 @@ export default function RootLayout({
             gtag('config', 'G-6GF5KLJ8B1');
           `}
         </Script>
-        {/* Google Structured Data for Zero-Click & Rich Snnippets */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "LocalBusiness",
-              "name": "TRUXO Heavy Equipment Rental",
-              "image": "https://truxo.ae/logo.jpeg",
-              "@id": "https://truxo.ae",
-              "url": "https://truxo.ae",
-              "telephone": "+971 54 305 8358",
-              "address": {
-                "@type": "PostalAddress",
-                "addressLocality": "Dubai",
-                "addressCountry": "AE"
-              },
-              "description": "Reliable Heavy Equipment Solutions for Construction, Industrial and Infrastructure Projects across the UAE."
-            })
-          }}
-        />
+        {/* Site-wide structured data: Organization + LocalBusiness (with what it rents) + WebSite */}
+        <JsonLd data={siteJsonLd()} />
         <ConditionalLayout>
           {children}
         </ConditionalLayout>

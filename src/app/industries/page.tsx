@@ -28,7 +28,7 @@ export default function IndustriesPage() {
       {/* 1. Cinematic Dark-Mode Hero */}
       <section className="relative w-full h-[70vh] min-h-[500px] flex items-center justify-center overflow-hidden border-b-4 border-[#C5A059]">
         <motion.div className="absolute inset-0 z-0" style={{ y: heroY }}>
-          <Image src="/images/heavy_crane.jpg" alt="Industries We Serve" width={1920} height={1080} priority className="w-full h-full object-cover filter brightness-[0.2]" />
+          <Image src="/images/heavy_crane.jpg" alt="Heavy crane lifting on a UAE infrastructure project" width={1920} height={1080} priority className="w-full h-full object-cover filter brightness-[0.2]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/50 to-transparent" />
         </motion.div>
         
@@ -38,14 +38,14 @@ export default function IndustriesPage() {
           transition={{ duration: 0.8 }}
           className="relative z-10 text-center px-6 mt-16"
         >
-          <h1 className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-[#C5A059] font-orbitron mb-4">
-            Global Sectors
+          <p className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-[#C5A059] font-orbitron mb-4">
+            Sectors We Support
+          </p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white uppercase tracking-tight font-orbitron drop-shadow-2xl max-w-4xl mx-auto text-balance">
+            Industries We <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]">Serve</span> in the UAE
           </h1>
-          <h2 className="text-4xl md:text-6xl lg:text-7xl font-black mb-6 text-white uppercase tracking-tight font-orbitron drop-shadow-2xl max-w-4xl mx-auto">
-            Industries We <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]">Serve.</span>
-          </h2>
-          <p className="text-gray-400 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed mb-12">
-            Supporting infrastructure and development projects of every scale across various vital sectors in the UAE.
+          <p className="text-gray-300 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed mb-12">
+            Heavy equipment rental for construction and infrastructure, manufacturing and warehousing, oil and gas, logistics and government projects of every scale across the UAE.
           </p>
 
           <motion.div 

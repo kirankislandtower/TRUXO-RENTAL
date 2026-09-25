@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/adminAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 const RETURN_LOCATION = 'Main Depot';
+
+// The public fleet page and the sitemap are cached; call this after any change to the fleet table
+// so visitors and search engines see it right away instead of after the cache expires.
+function refreshPublicFleetPages() {
+  revalidatePath('/fleet');
+  revalidatePath('/sitemap.xml');
+}
 
 // Placeholder contract value credited to a client each time an asset is assigned.
 const SIMULATED_CONTRACT_VALUE = 50000;
@@ -102,6 +110,7 @@ export async function PATCH(request: Request) {
         .eq('asset_id', old_asset_id);
 
       if (updateError) throw updateError;
+      refreshPublicFleetPages();
       return NextResponse.json({ success: true });
     }
 
@@ -141,6 +150,7 @@ export async function PATCH(request: Request) {
       if (wasDeployed && asset.client_id) {
         await releaseClientRental(supabaseAdmin, asset.client_id);
       }
+      refreshPublicFleetPages();
       return NextResponse.json({ success: true });
     }
 
@@ -182,6 +192,7 @@ export async function PATCH(request: Request) {
         .eq('client_id', client_id);
       if (clientUpdateError) throw clientUpdateError;
 
+      refreshPublicFleetPages();
       return NextResponse.json({ success: true });
     }
 
@@ -220,6 +231,7 @@ export async function PUT(request: Request) {
 
     if (insertError) throw insertError;
 
+    refreshPublicFleetPages();
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Error adding asset:', error);
@@ -258,6 +270,7 @@ export async function DELETE(request: Request) {
       await releaseClientRental(supabaseAdmin, asset.client_id);
     }
 
+    refreshPublicFleetPages();
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Error deleting asset:', error);

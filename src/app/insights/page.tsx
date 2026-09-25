@@ -56,9 +56,9 @@ export default function InsightsPage() {
                 <span className="text-xs font-black uppercase tracking-widest font-orbitron">Company Updates</span>
               </motion.div>
 
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black uppercase font-orbitron tracking-tighter mb-8 leading-none">
-                News & <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C5A059] to-[#DFBA73]">Insights</span>
+              <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold uppercase font-orbitron tracking-tight mb-8 leading-[1.05]">
+                Heavy Equipment <br/>
+                News & <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C5A059] to-[#DFBA73]">Insights</span>
               </h1>
               
               <p className="text-white/60 text-lg md:text-xl max-w-2xl font-medium leading-relaxed">

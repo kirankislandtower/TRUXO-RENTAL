@@ -55,7 +55,7 @@ export default function ContactPage() {
       {/* 1. Cinematic Dark-Mode Hero */}
       <section className="relative w-full h-[60vh] min-h-[500px] flex items-center justify-center overflow-hidden border-b-4 border-[#C5A059]">
         <div className="absolute inset-0 z-0">
-          <Image src="/images/company_excavator.jpg" alt="Construction Site Dusk" width={1920} height={1080} priority className="w-full h-full object-cover filter brightness-[0.25]" />
+          <Image src="/images/company_excavator.jpg" alt="TRUXO excavator working on a construction site at dusk" width={1920} height={1080} priority className="w-full h-full object-cover filter brightness-[0.25]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent" />
         </div>
         
@@ -65,14 +65,14 @@ export default function ContactPage() {
           transition={{ duration: 0.8 }}
           className="relative z-10 text-center px-6 mt-16"
         >
-          <h1 className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-[#C5A059] font-orbitron mb-4">
+          <p className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-[#C5A059] font-orbitron mb-4">
             Get In Touch
+          </p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white uppercase tracking-tight font-orbitron drop-shadow-2xl max-w-5xl mx-auto text-balance">
+            Request a <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]">Heavy Equipment</span> Quote
           </h1>
-          <h2 className="text-4xl md:text-6xl lg:text-7xl font-black mb-6 text-white uppercase tracking-tight font-orbitron drop-shadow-2xl">
-            Let&apos;s <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]">Build.</span>
-          </h2>
-          <p className="text-gray-400 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed">
-            Your trusted partner for reliable heavy equipment and material handling solutions across the UAE. Reach out today for mobilization schedules and rates.
+          <p className="text-gray-300 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed">
+            Rent excavators, forklifts, cranes and more across Dubai and the UAE. Call, message or send a dispatch request for mobilization schedules and rates.
           </p>
         </motion.div>
       </section>

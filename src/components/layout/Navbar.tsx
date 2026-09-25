@@ -70,7 +70,7 @@ export default function Navbar() {
           <div className={`flex items-center justify-between transition-all duration-300 rounded-full px-4 lg:px-6 py-2.5 lg:py-3.5 ${scrolled ? "bg-[#111113]/90 backdrop-blur-md shadow-2xl border border-white/10" : transparentTop ? "bg-transparent border border-transparent" : "bg-white/90 backdrop-blur-md border border-black/5 shadow-sm"}`}>
 
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 lg:gap-3">
+            <Link href="/" className="mr-6 flex items-center gap-2 lg:gap-3">
               <div className="w-8 h-8 lg:w-10 lg:h-10 flex items-center justify-center rounded-full bg-white p-0.5 lg:p-1 overflow-hidden">
                 <Image
                   src="/logo.jpeg"
@@ -94,7 +94,7 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Links */}
-            <div className="hidden lg:flex items-center gap-8 text-xs font-black uppercase tracking-widest">
+            <div className="hidden xl:flex items-center gap-6 2xl:gap-8 text-xs font-black uppercase tracking-widest">
               {links.map((link) => {
                 const isActive = pathname === link.href;
                 return (
@@ -113,9 +113,15 @@ export default function Navbar() {
             </div>
 
             {/* Actions */}
-            <div className="hidden lg:flex items-center gap-4">
-              <button onClick={triggerPresentation} className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all border ${onDark ? "border-white/30 text-white hover:bg-white/10" : "border-black/10 text-[#111113] hover:bg-black/5"}`}>
-                <Play className="w-3.5 h-3.5" /> Presentation
+            <div className="hidden xl:flex items-center gap-3">
+              <button
+                type="button"
+                onClick={triggerPresentation}
+                aria-label="Watch the company presentation"
+                title="Presentation"
+                className={`flex items-center gap-2 rounded-full border px-3.5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${onDark ? "border-white/30 text-white hover:bg-white/10" : "border-black/10 text-[#111113] hover:bg-black/5"}`}
+              >
+                <Play className="h-3.5 w-3.5" />
               </button>
               <Link
                 href="/contact"
@@ -127,7 +133,7 @@ export default function Navbar() {
 
             {/* Mobile Hamburger */}
             <button
-              className={`lg:hidden rounded-full p-2 outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] ${onDark || isOpen ? "text-white hover:bg-white/10" : "text-[#111113] hover:bg-black/5"}`}
+              className={`xl:hidden rounded-full p-2 outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] ${onDark || isOpen ? "text-white hover:bg-white/10" : "text-[#111113] hover:bg-black/5"}`}
               aria-label={isOpen ? "Close menu" : "Open menu"}
               aria-expanded={isOpen}
               aria-controls="mobile-menu"
@@ -152,7 +158,7 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[105] overflow-y-auto overscroll-contain bg-[#0A0A0C] text-white lg:hidden"
+            className="fixed inset-0 z-[105] overflow-y-auto overscroll-contain bg-[#0A0A0C] text-white xl:hidden"
           >
             {/* soft gold glow, top right */}
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_45%_at_100%_0%,rgba(197,160,89,0.18),transparent)]" />

@@ -27,7 +27,7 @@ export default function ServicesPage() {
       {/* 1. Cinematic Dark-Mode Hero */}
       <section className="relative w-full h-[50vh] min-h-[400px] flex items-center justify-center overflow-hidden border-b border-white/5">
         <motion.div className="absolute inset-0 z-0" style={{ y: heroVideoY }}>
-          <Image src="/images/Reliable Industrial Transportation Services in Saudi Arabia _ 3M International.jpeg" alt="Services Header" width={1920} height={1080} priority className="w-full h-full object-cover filter brightness-[0.2]" />
+          <Image src="/images/Reliable Industrial Transportation Services in Saudi Arabia _ 3M International.jpeg" alt="Heavy equipment rental services in Dubai, UAE" width={1920} height={1080} priority className="w-full h-full object-cover filter brightness-[0.2]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/50 to-transparent" />
         </motion.div>
         
@@ -37,14 +37,14 @@ export default function ServicesPage() {
           transition={{ duration: 0.8 }}
           className="relative z-10 text-center px-6 mt-16"
         >
-          <h1 className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-[#C5A059] font-orbitron mb-4">
+          <p className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-[#C5A059] font-orbitron mb-4">
             Our Offerings
+          </p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white uppercase tracking-tight font-orbitron drop-shadow-2xl max-w-5xl mx-auto text-balance">
+            Heavy Equipment Rental <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]">Services</span> in Dubai
           </h1>
-          <h2 className="text-4xl md:text-6xl lg:text-7xl font-black mb-6 text-white uppercase tracking-tight font-orbitron drop-shadow-2xl">
-            Rental <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]">Services.</span>
-          </h2>
-          <p className="text-gray-400 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed">
-            Reliable and certified heavy machinery solutions tailored for specific industrial tasks.
+          <p className="text-gray-300 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed">
+            Inspected, well-maintained excavators, forklifts, wheel shovels, cranes and trucks on flexible rental terms, deployed quickly across the UAE.
           </p>
         </motion.div>
       </section>

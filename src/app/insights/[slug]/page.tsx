@@ -3,8 +3,40 @@ import { ArrowLeft, Calendar, User } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import JsonLd from "@/components/seo/JsonLd";
+import { ORG_REF, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { absoluteUrl } from "@/lib/site";
 
-export default async function InsightPostPage({ params }: { params: Promise<{ slug: string }> }) {
+type Props = { params: Promise<{ slug: string }> };
+
+// Articles are static data: build every one ahead of time so they are served as fast, cacheable HTML.
+export function generateStaticParams() {
+  return insightsData.map((post) => ({ slug: post.slug }));
+}
+
+function isoDate(value: string): string | undefined {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const post = insightsData.find((p) => p.slug === slug);
+  if (!post) return { title: "Article Not Found", robots: { index: false, follow: true } };
+
+  return pageMetadata({
+    title: post.title,
+    description: post.excerpt,
+    path: `/insights/${post.slug}`,
+    keywords: [post.category, "heavy equipment UAE", "construction equipment Dubai", "TRUXO insights"],
+    image: { url: post.image, alt: post.title },
+    type: "article",
+    publishedTime: isoDate(post.date),
+  });
+}
+
+export default async function InsightPostPage({ params }: Props) {
   const { slug } = await params;
   const post = insightsData.find((p) => p.slug === slug);
 
@@ -12,8 +44,31 @@ export default async function InsightPostPage({ params }: { params: Promise<{ sl
     notFound();
   }
 
+  const published = isoDate(post.date);
+
   return (
     <main className="min-h-screen bg-[#050505] text-white pt-32 pb-32">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: post.title,
+          description: post.excerpt,
+          image: absoluteUrl(post.image),
+          ...(published ? { datePublished: published, dateModified: published } : {}),
+          articleSection: post.category,
+          inLanguage: "en-AE",
+          author: ORG_REF,
+          publisher: ORG_REF,
+          mainEntityOfPage: absoluteUrl(`/insights/${post.slug}`),
+        }}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "News & Insights", path: "/insights" },
+          { name: post.title, path: `/insights/${post.slug}` },
+        ])}
+      />
       <article className="max-w-4xl mx-auto px-6">
         
         {/* Back Button */}

@@ -1,8 +1,12 @@
-import React from "react";
+import React, { cache } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { parseAssetData } from "@/lib/fleetAsset";
+import JsonLd from "@/components/seo/JsonLd";
+import { BUSINESS_REF, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { absoluteUrl, BUSINESS } from "@/lib/site";
 import VehicleViewer from "@/components/ui/VehicleViewer";
 import { MapPin, ActivitySquare, CheckCircle2, ArrowLeft, ArrowRight, ShieldCheck, Factory } from "lucide-react";
 
@@ -15,84 +19,85 @@ import type { Metadata } from "next";
 // This page uses the service-role client, so only select the columns it
 // actually renders (never `*`, which would pull internal fields like client_id).
 const VEHICLE_COLUMNS = "asset_id, type, model, image, location, status";
-const getSupabase = getSupabaseAdmin;
+
+// React cache(): generateMetadata and the page below both call this, but it only hits the database once per request.
+const loadVehicle = cache(async (id: string) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { status: "no-db" as const };
+  const { data: vehicle, error } = await supabase.from("fleet").select(VEHICLE_COLUMNS).eq("asset_id", id).single();
+  if (error || !vehicle) return { status: "not-found" as const };
+  return { status: "ok" as const, vehicle, ...parseAssetData(vehicle) };
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const supabase = getSupabase();
-  if (!supabase) return { title: "Error" };
-
-  const { data: vehicle } = await supabase.from('fleet').select(VEHICLE_COLUMNS).eq('asset_id', id).single();
-  
-  if (!vehicle) return { title: "Equipment Not Found" };
-  
-  let parsedBrand = vehicle.type;
-  let parsedName = "Unknown Model";
-  try {
-    const json = JSON.parse(vehicle.model);
-    if (json.name) parsedName = json.name;
-    if (json.brand) parsedBrand = json.brand;
-  } catch {
-    if (vehicle.model?.includes("||")) {
-      const parts = vehicle.model.split("||");
-      parsedBrand = parts[0];
-      parsedName = parts[1];
-    } else {
-      parsedName = vehicle.model;
-    }
+  const result = await loadVehicle(id);
+  if (result.status !== "ok") {
+    return { title: "Equipment Not Found", robots: { index: false, follow: true } };
   }
-  
-  return {
-    title: `${parsedBrand} ${parsedName}`,
-    description: `Rent the ${parsedBrand} ${parsedName}. Available in ${vehicle.location}.`,
-  };
+
+  const { vehicle, brand, name, image } = result;
+  const fullName = `${brand} ${name}`.trim();
+  const location = vehicle.location || BUSINESS.locality;
+
+  return pageMetadata({
+    title: `${fullName} for Rent in ${BUSINESS.locality}`,
+    description: `Rent the ${fullName} from TRUXO in ${location}. Inspected, serviced heavy equipment for construction and industrial projects across the UAE. Request a quote.`,
+    path: `/fleet/${encodeURIComponent(id)}`,
+    keywords: [`${fullName} rental`, `${brand} rental Dubai`, "heavy equipment rental Dubai", "TRUXO fleet"],
+    image: { url: image, alt: `${fullName} available for rent in ${location}` },
+  });
 }
 
 export default async function FleetSpecPage({ params }: Props) {
   const { id } = await params;
-  const supabase = getSupabase();
-  
-  if (!supabase) {
+  const result = await loadVehicle(id);
+
+  if (result.status === "no-db") {
     return <div>Database connection error</div>;
   }
-
-  const { data: vehicle, error } = await supabase.from('fleet').select(VEHICLE_COLUMNS).eq('asset_id', id).single();
-
-  if (error || !vehicle) {
+  if (result.status === "not-found") {
     notFound();
   }
 
-  let parsedBrand = vehicle.type || "Unknown Brand";
-  let parsedName = "Unknown Model";
-  
-  try {
-    const json = JSON.parse(vehicle.model);
-    if (json.name) parsedName = json.name;
-    if (json.brand) parsedBrand = json.brand;
-  } catch {
-    if (vehicle.model?.includes("||")) {
-      const parts = vehicle.model.split("||");
-      parsedBrand = parts[0];
-      parsedName = parts[1];
-    } else {
-      parsedName = vehicle.model;
-    }
-  }
-
-  const imageSrc = vehicle.image || "/images/company_excavator.jpg";
+  const { vehicle, brand: parsedBrand, name: parsedName, image: imageSrc } = result;
+  const fullName = `${parsedBrand} ${parsedName}`.trim();
+  const location = vehicle.location || BUSINESS.locality;
+  const supabase = getSupabaseAdmin();
 
   // Fetch 3 other random vehicles for recommendations
-  const { data: recommendations } = await supabase.from('fleet').select('asset_id, type, model, image').neq('asset_id', id).limit(3);
+  const { data: recommendations } = supabase ? await supabase.from('fleet').select('asset_id, type, model, image').neq('asset_id', id).limit(3) : { data: null };
 
   return (
     <main className="min-h-screen bg-[#050505] text-[#F5F2EB] font-sans pb-24 md:pb-0 selection:bg-[#C5A059] selection:text-[#12131A]">
       
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Service",
+          name: `${fullName} rental in ${location}`,
+          serviceType: "Heavy equipment rental",
+          description: `${fullName} available to rent from TRUXO in ${location} for construction, industrial and infrastructure projects across the UAE.`,
+          image: imageSrc.startsWith("http") ? imageSrc : absoluteUrl(imageSrc),
+          url: absoluteUrl(`/fleet/${encodeURIComponent(id)}`),
+          brand: { "@type": "Brand", name: parsedBrand },
+          areaServed: { "@type": "Country", name: BUSINESS.countryName },
+          provider: BUSINESS_REF,
+        }}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Our Fleet", path: "/fleet" },
+          { name: fullName, path: `/fleet/${encodeURIComponent(id)}` },
+        ])}
+      />
+
       {/* Immersive Hero Header */}
       <div className="relative w-full h-[40vh] md:h-[50vh] min-h-[400px]">
         <div className="absolute inset-0 z-0">
           <Image 
             src={imageSrc} 
-            alt={parsedName} 
+            alt={`${fullName} heavy equipment for rent in ${location}`} 
             fill 
             sizes="100vw"
             priority
@@ -121,9 +126,9 @@ export default async function FleetSpecPage({ params }: Props) {
                 </span>
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-orbitron font-black uppercase text-white tracking-tight drop-shadow-2xl">
-                {parsedName}
+                {fullName}
               </h1>
-              <p className="text-xl md:text-2xl text-gray-400 font-bold mt-2 uppercase tracking-wide">{parsedBrand}</p>
+              <p className="text-xl md:text-2xl text-gray-400 font-bold mt-2 uppercase tracking-wide">Heavy equipment rental in {location}</p>
             </div>
           </div>
         </div>
@@ -133,7 +138,7 @@ export default async function FleetSpecPage({ params }: Props) {
         
         {/* 360 / Interactive Viewer */}
         <div className="mb-24 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl border border-white/5 bg-[#111113]">
-          <VehicleViewer imageSrc={imageSrc} title={parsedName} />
+          <VehicleViewer imageSrc={imageSrc} title={fullName} />
         </div>
 
         {/* Specifications & Sticky Sidebar Grid */}
@@ -249,22 +254,7 @@ export default async function FleetSpecPage({ params }: Props) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {recommendations.map(rec => {
-                let recName = "Unknown Model";
-                let recBrand = rec.type;
-                
-                try {
-                  const json = JSON.parse(rec.model);
-                  if (json.name) recName = json.name;
-                  if (json.brand) recBrand = json.brand;
-                } catch {
-                  if (rec.model?.includes("||")) {
-                    const parts = rec.model.split("||");
-                    recBrand = parts[0];
-                    recName = parts[1];
-                  } else {
-                    recName = rec.model;
-                  }
-                }
+                const { brand: recBrand, name: recName, image: recImage } = parseAssetData(rec);
                 
                 return (
                   <Link 
@@ -273,8 +263,8 @@ export default async function FleetSpecPage({ params }: Props) {
                     className="group relative h-[300px] rounded-3xl overflow-hidden border border-white/5 bg-[#111113] block"
                   >
                     <Image 
-                      src={rec.image || "/images/company_excavator.jpg"} 
-                      alt={recName} 
+                      src={recImage} 
+                      alt={`${recBrand} ${recName} heavy equipment for rent`} 
                       fill 
                       sizes="(max-width: 768px) 100vw, 33vw"
                       className="object-cover transition-transform duration-700 group-hover:scale-105 filter brightness-[0.5] group-hover:brightness-[0.7]" 
