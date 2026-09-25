@@ -4,6 +4,16 @@ import { services } from "@/data";
 
 type ImageDescriptor = { url: string; width?: number; height?: number; alt?: string };
 
+const MAX_DESCRIPTION = 160;
+
+/** Search results cut descriptions off at ~160 characters; trim on a word boundary so it never ends mid-word. */
+export function fitDescription(text: string, max = MAX_DESCRIPTION): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max - 1);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 0) || cut.length).replace(/[\s.,;:-]+$/, "")}…`;
+}
+
 /**
  * Metadata for a route. Next.js shallowly REPLACES parent metadata keys (a child's `openGraph` wipes the
  * parent's), so every route builds its complete Open Graph / Twitter / canonical set through this helper.
@@ -19,9 +29,10 @@ export function pageMetadata(opts: {
 }): Metadata {
   const image = opts.image ?? DEFAULT_OG_IMAGE;
   const socialTitle = `${opts.title} | ${SITE_NAME}`;
+  const description = fitDescription(opts.description);
   return {
     title: opts.title,
-    description: opts.description,
+    description,
     keywords: opts.keywords,
     alternates: { canonical: opts.path },
     openGraph: {
@@ -30,11 +41,11 @@ export function pageMetadata(opts: {
       siteName: SITE_NAME,
       locale: "en_AE",
       title: socialTitle,
-      description: opts.description,
+      description,
       images: [image],
       ...(opts.publishedTime ? { publishedTime: opts.publishedTime } : {}),
     },
-    twitter: { card: "summary_large_image", title: socialTitle, description: opts.description, images: [image.url] },
+    twitter: { card: "summary_large_image", title: socialTitle, description, images: [image.url] },
   };
 }
 
