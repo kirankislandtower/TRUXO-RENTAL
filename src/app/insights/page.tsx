@@ -83,12 +83,13 @@ export default function InsightsPage() {
               <div className="relative h-80 lg:h-full w-full overflow-hidden bg-black">
                 <motion.div
                   layoutId={`image-container-${activePost.id}`}
-                  className="w-full h-full"
+                  className="relative w-full h-full"
                 >
                   <Image 
                     src={activePost.image} 
                     alt={activePost.title} 
                     fill 
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
                   />
                 </motion.div>
@@ -160,12 +161,13 @@ export default function InsightsPage() {
                   <div className="relative h-64 w-full overflow-hidden bg-black">
                     <motion.div
                       layoutId={`image-container-${post.id}`}
-                      className="w-full h-full"
+                      className="relative w-full h-full"
                     >
                       <Image 
                         src={post.image} 
                         alt={post.title} 
                         fill 
+                        sizes="(max-width: 768px) 100vw, 50vw"
                         className="object-cover transition-all duration-[1s] ease-out filter brightness-[0.7] group-hover:brightness-100 group-hover:scale-105"
                       />
                     </motion.div>
