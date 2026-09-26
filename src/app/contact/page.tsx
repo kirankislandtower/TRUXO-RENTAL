@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Phone, MapPin, Clock, ArrowRight, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
+import { trackEvent } from "@/lib/analytics";
 
 export default function ContactPage() {
   const [formStatus, setFormStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -35,6 +36,7 @@ export default function ContactPage() {
         
       if (error) throw error;
       setFormStatus("success");
+      trackEvent("generate_lead", { form_name: "contact_request" });
       setFormData({
         firstName: "",
         lastName: "",
@@ -82,7 +84,7 @@ export default function ContactPage() {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-16 xl:gap-8">
           
           {/* 3. Interactive Contact Nodes (Mobile Optimized: First on small screens) */}
-          <div className="xl:col-span-5 order-1 xl:order-none space-y-6">
+          <div data-track-location="contact_page" className="xl:col-span-5 order-1 xl:order-none space-y-6">
             <h3 className="text-2xl md:text-3xl font-black text-white uppercase font-orbitron mb-8 flex items-center gap-4">
               <span className="w-8 h-[2px] bg-[#C5A059]" /> Direct Lines
             </h3>

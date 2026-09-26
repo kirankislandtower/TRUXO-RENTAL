@@ -29,7 +29,7 @@ export default function Footer() {
 
         <div className="space-y-6">
           <h4 className="text-[#C5A059] font-orbitron font-bold text-sm uppercase tracking-wider">contact details</h4>
-          <address className="not-italic">
+          <address data-track-location="footer" className="not-italic">
             <ul className="space-y-3 text-sm text-gray-400 font-bold">
               <li>
                 <a href="tel:+971543058358" className="flex items-center gap-2 hover:text-[#C5A059] transition-colors">

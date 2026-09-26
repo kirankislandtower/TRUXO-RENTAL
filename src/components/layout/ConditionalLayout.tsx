@@ -6,6 +6,7 @@ import Footer from "./Footer";
 import BottomTabNavigation from "./BottomTabNavigation";
 import FAB from "./FAB";
 import SmoothScroller from "./SmoothScroller";
+import ContactClickTracker from "@/components/analytics/ContactClickTracker";
 
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -22,6 +23,7 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
       <FAB />
       <BottomTabNavigation />
       <Footer />
+      <ContactClickTracker />
     </SmoothScroller>
   );
 }

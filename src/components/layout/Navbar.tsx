@@ -219,7 +219,7 @@ export default function Navbar() {
                   </Link>
                 </div>
 
-                <div className="mt-6 flex flex-col gap-3 text-[13px] text-white/60">
+                <div data-track-location="mobile_menu" className="mt-6 flex flex-col gap-3 text-[13px] text-white/60">
                   <a href="tel:+971543058358" className="flex items-center gap-3 transition-colors active:text-white">
                     <Phone className="h-4 w-4 text-[#C5A059]" /> +971 54 305 8358
                   </a>
