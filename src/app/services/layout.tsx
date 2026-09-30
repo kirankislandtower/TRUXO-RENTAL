@@ -15,7 +15,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <JsonLd data={breadcrumbJsonLd([{ name: "Services", path: "/services" }])} />
-      <JsonLd data={itemListJsonLd("TRUXO equipment rental services", services.map((service) => ({ name: `${service.title} rental`, path: "/services" })))} />
+      <JsonLd data={itemListJsonLd("TRUXO equipment rental services", services.map((service) => ({ name: `${service.title} rental`, path: `/services/${service.slug}` })))} />
       {children}
     </>
   );

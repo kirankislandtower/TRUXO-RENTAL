@@ -125,10 +125,16 @@ export default function ServicesPage() {
                   </div>
                 </div>
 
-                <Link href="/contact" className="mt-auto group flex items-center justify-between w-full p-6 rounded-2xl bg-gradient-to-r from-[#DFBA73] to-[#C5A059] text-[#12131A] font-black text-sm uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(197,160,89,0.2)] hover:shadow-[0_0_40px_rgba(197,160,89,0.4)] active:scale-[0.98] transition-all">
-                  Request Service Quote
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                </Link>
+                <div className="mt-auto flex flex-col sm:flex-row gap-4">
+                  <Link href={`/services/${services[activeTab].slug}`} className="group flex-1 flex items-center justify-between p-6 rounded-2xl border border-white/15 text-white font-black text-sm uppercase tracking-[0.2em] hover:border-[#C5A059]/40 active:scale-[0.98] transition-all">
+                    Full Details
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                  </Link>
+                  <Link href="/contact" className="group flex-1 flex items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-[#DFBA73] to-[#C5A059] text-[#12131A] font-black text-sm uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(197,160,89,0.2)] hover:shadow-[0_0_40px_rgba(197,160,89,0.4)] active:scale-[0.98] transition-all">
+                    Request Quote
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                  </Link>
+                </div>
               </motion.div>
             </AnimatePresence>
           </div>

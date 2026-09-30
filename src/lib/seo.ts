@@ -17,6 +17,12 @@ export function fitDescription(text: string, max = MAX_DESCRIPTION): string {
 /**
  * Metadata for a route. Next.js shallowly REPLACES parent metadata keys (a child's `openGraph` wipes the
  * parent's), so every route builds its complete Open Graph / Twitter / canonical set through this helper.
+ *
+ * The document <title> is built here too, as "<title> | TRUXO", rather than left to the root layout's
+ * `title.template`: Next only chains a template into the *next* route segment down (layout -> its own
+ * page), not through a second nested layout (e.g. root -> services/layout.tsx -> services/[slug]/page.tsx).
+ * Past that depth the template silently stops applying and the raw title ships with no suffix — which is
+ * what was happening on every /fleet/[id] and /insights/[slug] page before this was made explicit here.
  */
 export function pageMetadata(opts: {
   title: string; // shown as "<title> | TRUXO" in the browser tab and search results
@@ -31,7 +37,9 @@ export function pageMetadata(opts: {
   const socialTitle = `${opts.title} | ${SITE_NAME}`;
   const description = fitDescription(opts.description);
   return {
-    title: opts.title,
+    // `absolute` ships this exact string and skips any ancestor `title.template` (including the root
+    // layout's own "%s | TRUXO"), so routes at every nesting depth get the suffix exactly once.
+    title: { absolute: socialTitle },
     description,
     keywords: opts.keywords,
     alternates: { canonical: opts.path },
@@ -143,6 +151,19 @@ export function itemListJsonLd(name: string, items: { name: string; path: string
       position: index + 1,
       name: item.name,
       url: absoluteUrl(item.path),
+    })),
+  };
+}
+
+/** FAQPage structured data — also earns the expandable-question rich result in Google. */
+export function faqJsonLd(items: { question: string; answer: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
     })),
   };
 }

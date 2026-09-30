@@ -23,23 +23,70 @@ export const fleetInventory = [
 export const services = [
   {
     title: "Excavators",
+    slug: "excavator-rental-dubai",
     desc: "Our excavators are designed for heavy-duty earthmoving and construction applications. They are ideal for excavation, trenching, foundation work, demolition, site preparation, and material handling.",
+    tagline: "Mini to heavy excavators for digging, trenching and demolition work.",
+    useCases: [
+      "Excavation and trenching for foundations and utilities",
+      "Demolition and site clearance",
+      "Bulk material handling and loading",
+      "Landscaping and grading",
+      "Road and infrastructure works",
+    ],
   },
   {
     title: "Forklifts",
+    slug: "forklift-rental-dubai",
     desc: "Our forklifts are designed for efficient material handling, loading, unloading, stacking, and transportation of goods in warehouses, factories, logistics centers, and construction sites.",
+    tagline: "Warehouse and site forklifts for fast, safe material handling.",
+    useCases: [
+      "Loading and unloading containers and trucks",
+      "Warehouse racking and stacking",
+      "Construction site material movement",
+      "Logistics and distribution centers",
+      "Factory and production floor handling",
+    ],
   },
   {
-    title: "Wheel Shovels",
-    desc: "Our wheel shovels (front-end loaders) are built for efficient loading, transporting, and stockpiling of materials such as sand, gravel, soil, and aggregates.",
+    // Renamed from "Wheel Shovels" — "wheel loader" is the term people actually
+    // search for; the old name is kept as a synonym in the copy below.
+    title: "Wheel Loaders",
+    slug: "wheel-loader-rental-dubai",
+    desc: "Our wheel loaders (also known as wheel shovels or front-end loaders) are built for efficient loading, transporting, and stockpiling of materials such as sand, gravel, soil, and aggregates.",
+    tagline: "Front-end loaders for moving and stockpiling bulk materials.",
+    useCases: [
+      "Loading sand, gravel and aggregates onto trucks",
+      "Stockpiling and site material management",
+      "Backfilling trenches and excavations",
+      "Quarry, industrial yard and warehouse handling",
+      "Site clearing and grading support",
+    ],
   },
   {
     title: "Cranes",
+    slug: "crane-rental-dubai",
     desc: "We provide a comprehensive fleet of cranes ranging from 5-ton to 100-ton lifting capacity, including mobile cranes for versatile lifting operations.",
+    tagline: "Mobile cranes from 5 to 100 tons for lifting and installation.",
+    useCases: [
+      "Structural steel and precast erection",
+      "Equipment installation and positioning",
+      "Tower crane component lifts",
+      "Pipeline and infrastructure lifts",
+      "High-rise and industrial project support",
+    ],
   },
   {
     title: "Trucks",
+    slug: "truck-rental-dubai",
     desc: "Our trucks provide reliable and efficient transportation solutions for construction, industrial, and logistics operations. Built for durability and high performance.",
+    tagline: "Flatbeds, tippers and haulage trucks for site transport.",
+    useCases: [
+      "Transporting heavy machinery between sites",
+      "Hauling construction materials and aggregates",
+      "Waste and debris removal",
+      "Long-haul logistics across the UAE",
+      "Site-to-site equipment mobilization",
+    ],
   }
 ];
 

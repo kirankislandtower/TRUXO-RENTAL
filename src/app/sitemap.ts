@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { insightsData } from "@/data/insights";
+import { services } from "@/data";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { absoluteUrl } from "@/lib/site";
 
@@ -19,6 +20,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl("/"), lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: absoluteUrl("/fleet"), lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: absoluteUrl("/services"), lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    ...services.map((service): MetadataRoute.Sitemap[number] => ({
+      url: absoluteUrl(`/services/${service.slug}`),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    })),
     { url: absoluteUrl("/contact"), lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: absoluteUrl("/industries"), lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: absoluteUrl("/insights"), lastModified: now, changeFrequency: "weekly", priority: 0.7 },
