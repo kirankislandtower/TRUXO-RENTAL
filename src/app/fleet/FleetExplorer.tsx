@@ -53,7 +53,7 @@ export default function FleetExplorer({ assets }: { assets: FleetCardAsset[] }) 
             Heavy Equipment <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]">Fleet</span> for Rent in Dubai
           </h1>
           <p className="text-gray-300 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed">
-            Explore TRUXO&apos;s ready-to-deploy fleet of excavators, wheel shovels, forklifts, cranes and trucks, available across Dubai and the UAE.
+            Explore TRUXO&apos;s ready-to-deploy fleet of excavators, wheel loaders, forklifts, cranes and trucks, available across Dubai and the UAE.
           </p>
         </motion.div>
       </section>

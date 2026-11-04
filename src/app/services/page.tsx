@@ -44,7 +44,7 @@ export default function ServicesPage() {
             Heavy Equipment Rental <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#DFBA73] to-[#C5A059]">Services</span> in Dubai
           </h1>
           <p className="text-gray-300 text-sm md:text-lg font-medium max-w-2xl mx-auto leading-relaxed">
-            Inspected, well-maintained excavators, forklifts, wheel shovels, cranes and trucks on flexible rental terms, deployed quickly across the UAE.
+            Inspected, well-maintained excavators, forklifts, wheel loaders, cranes and trucks on flexible rental terms, deployed quickly across the UAE.
           </p>
         </motion.div>
       </section>

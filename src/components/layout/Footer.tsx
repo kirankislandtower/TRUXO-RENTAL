@@ -12,7 +12,7 @@ export default function Footer() {
             <span className="font-orbitron font-black text-2xl tracking-widest text-white uppercase">truxo</span>
           </Link>
           <p className="text-gray-400 text-sm leading-relaxed font-medium">
-            TRUXO rents excavators, forklifts, wheel shovels, cranes and trucks to construction, industrial and infrastructure projects in Dubai and across the UAE.
+            TRUXO rents excavators, forklifts, wheel loaders, cranes and trucks to construction, industrial and infrastructure projects in Dubai and across the UAE.
           </p>
         </div>
 

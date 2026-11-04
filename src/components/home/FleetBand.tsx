@@ -50,7 +50,7 @@ export default function FleetBand({ items }: { items: FleetBandItem[] }) {
             The right machine for every job.
           </h2>
           <p className="mt-5 max-w-xl text-base font-medium leading-relaxed text-white/75 md:text-lg">
-            Excavators, forklifts, wheel shovels, cranes and trucks, regularly inspected and serviced, ready to deploy across the UAE.
+            Excavators, forklifts, wheel loaders, cranes and trucks, regularly inspected and serviced, ready to deploy across the UAE.
           </p>
         </div>
 

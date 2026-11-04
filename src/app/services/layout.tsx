@@ -6,7 +6,7 @@ import { breadcrumbJsonLd, itemListJsonLd, pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Heavy Equipment Rental Services in Dubai",
   description:
-    "Excavators, forklifts, wheel shovels, cranes and trucks on flexible rental terms, regularly inspected and serviced, and deployed quickly across Dubai and the UAE.",
+    "Excavators, forklifts, wheel loaders, cranes and trucks on flexible rental terms, regularly inspected and serviced, and deployed quickly across Dubai and the UAE.",
   path: "/services",
   keywords: ["heavy equipment rental services Dubai", "excavator rental", "forklift rental UAE", "crane rental Dubai", "construction equipment leasing UAE"],
 });

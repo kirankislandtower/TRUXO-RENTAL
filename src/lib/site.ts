@@ -19,7 +19,7 @@ export const DEFAULT_OG_IMAGE = {
   url: "/og-default.jpg",
   width: 1200,
   height: 630,
-  alt: "TRUXO heavy equipment rental in Dubai, UAE: excavators, forklifts, wheel shovels, cranes and trucks",
+  alt: "TRUXO heavy equipment rental in Dubai, UAE: excavators, forklifts, wheel loaders, cranes and trucks",
 };
 
 export function absoluteUrl(path = "/"): string {

@@ -194,9 +194,9 @@ export default function Home() {
       desc: "Our forklifts are designed for efficient material handling, loading, unloading, stacking, and transportation of goods in warehouses, factories, logistics centers, and construction sites.",
     },
     {
-      title: "Wheel Shovels",
+      title: "Wheel Loaders",
       img: "/images/Revealing The Profitability Of Used Wheel Excavators.jpeg",
-      desc: "Our wheel shovels (front-end loaders) are built for efficient loading, transporting, and stockpiling of materials such as sand, gravel, soil, and aggregates.",
+      desc: "Our wheel loaders (also known as wheel shovels or front-end loaders) are built for efficient loading, transporting, and stockpiling of materials such as sand, gravel, soil, and aggregates.",
     },
     {
       title: "Cranes",
@@ -425,7 +425,7 @@ export default function Home() {
                         <ProductivityChart />
                       </div>
                       <div className="h-full min-h-[250px] relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-                        <Image src="/images/wheel_shovel.jpg" alt="Wheel shovel working" width={1200} height={900} className="w-full h-full object-cover filter brightness-[0.8]" />
+                        <Image src="/images/wheel_shovel.jpg" alt="Wheel loader working" width={1200} height={900} className="w-full h-full object-cover filter brightness-[0.8]" />
                       </div>
                     </div>
                   )}

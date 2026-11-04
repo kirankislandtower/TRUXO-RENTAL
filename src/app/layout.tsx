@@ -29,7 +29,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 const DEFAULT_DESCRIPTION =
-  "Rent excavators, forklifts, wheel shovels, cranes and trucks across Dubai and the UAE. Inspected, serviced equipment on flexible terms. Get a quote today.";
+  "Rent excavators, forklifts, wheel loaders, cranes and trucks across Dubai and the UAE. Inspected, serviced equipment on flexible terms. Get a quote today.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
