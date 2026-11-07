@@ -8,7 +8,7 @@ export const BUSINESS_NAME = "TRUXO Heavy Equipment Rental";
 export const BUSINESS = {
   telephone: "+971543058358",
   telephoneDisplay: "+971 54 305 8358",
-  email: "admin@truxo.ae",
+  email: "sales@truxo.ae",
   locality: "Dubai",
   country: "AE",
   countryName: "United Arab Emirates",

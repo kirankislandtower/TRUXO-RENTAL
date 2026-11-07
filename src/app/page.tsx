@@ -23,6 +23,7 @@ import { companyProfile } from "@/data";
 import { ProductivityChart, OperationTrendsChart } from "@/components/ui/Charts";
 import FleetBand from "@/components/home/FleetBand";
 import { SPLASH_HOLD_MS, splashState } from "@/lib/splash";
+import { BUSINESS } from "@/lib/site";
 
 // Small video-style thumbnail in the hero corner. Opens the same slide-deck "presentation mode" as the nav button.
 function PresentationChip({ onOpen, delay, className = "" }: { onOpen: () => void; delay: number; className?: string }) {
@@ -512,7 +513,7 @@ export default function Home() {
                         <div className="p-6 rounded-2xl bg-[#1A1A1D]/80 backdrop-blur-xl text-white border border-white/10 shadow-2xl space-y-4">
                           <div className="flex items-center gap-3 font-medium text-sm text-gray-300 hover:text-white transition-colors">
                             <Mail className="w-5 h-5 text-[#C5A059]" />
-                            <span>admin@truxo.ae</span>
+                            <span>{BUSINESS.email}</span>
                           </div>
                           <div className="flex items-center gap-3 font-medium text-sm text-gray-300 hover:text-white transition-colors">
                             <Globe className="w-5 h-5 text-[#C5A059]" />
@@ -893,7 +894,7 @@ export default function Home() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
                 {[
-                  { icon: <Mail className="w-5 h-5" />, text: "admin@truxo.ae" },
+                  { icon: <Mail className="w-5 h-5" />, text: BUSINESS.email },
                   { icon: <Globe className="w-5 h-5" />, text: "truxo.ae" },
                   { icon: <Phone className="w-5 h-5" />, text: "+971 54 305 8358" },
                   { icon: <MapPin className="w-5 h-5" />, text: "Dubai, UAE" },

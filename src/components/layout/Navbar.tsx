@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, Play, ArrowUpRight, Phone, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { BUSINESS } from "@/lib/site";
 
 // Pages that open on a dark full-bleed hero: the nav sits transparent over it (white text) until you scroll.
 // Anything else (e.g. the 404 page) keeps the solid white pill so it never becomes unreadable.
@@ -223,8 +224,8 @@ export default function Navbar() {
                   <a href="tel:+971543058358" className="flex items-center gap-3 transition-colors active:text-white">
                     <Phone className="h-4 w-4 text-[#C5A059]" /> +971 54 305 8358
                   </a>
-                  <a href="mailto:admin@truxo.ae" className="flex items-center gap-3 transition-colors active:text-white">
-                    <Mail className="h-4 w-4 text-[#C5A059]" /> admin@truxo.ae
+                  <a href={`mailto:${BUSINESS.email}`} className="flex items-center gap-3 transition-colors active:text-white">
+                    <Mail className="h-4 w-4 text-[#C5A059]" /> {BUSINESS.email}
                   </a>
                 </div>
               </motion.div>

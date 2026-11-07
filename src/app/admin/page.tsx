@@ -15,6 +15,7 @@ import Overview from "./components/Overview";
 import SystemSettings from "./components/SystemSettings";
 import Invoices from "./components/Invoices";
 import { adminFetch, ADMIN_UNAUTHORIZED_EVENT } from "@/lib/adminFetch";
+import { BUSINESS } from "@/lib/site";
 import { parseContactRequest } from "@/lib/contactRequest";
 
 type DispatchFilter = "All" | "Pending" | "Approved" | "Rejected";
@@ -218,9 +219,9 @@ export default function AdminDashboard() {
       body += `This is the TRUXO Team regarding your equipment request for "${req.equipment_required}":\n\n`;
     }
 
-    body += `\n\nBest regards,\nThe TRUXO Team\nadmin@truxo.ae\n🌐 Visit us at: https://truxo.ae`;
+    body += `\n\nBest regards,\nThe TRUXO Team\n${BUSINESS.email}\n🌐 Visit us at: https://truxo.ae`;
 
-    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(req.email)}&cc=admin@truxo.ae&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(req.email)}&cc=${encodeURIComponent(BUSINESS.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const handleEmailClient = (req: ContactRequest, type: 'Reply' | 'Approve' | 'Reject') => {

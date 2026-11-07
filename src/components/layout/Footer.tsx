@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, Phone, MapPin } from "lucide-react";
+import { BUSINESS } from "@/lib/site";
 
 export default function Footer() {
   return (
@@ -39,9 +40,9 @@ export default function Footer() {
               </li>
 
               <li>
-                <a href="mailto:admin@truxo.ae" className="flex items-center gap-2 hover:text-[#C5A059] transition-colors">
+                <a href={`mailto:${BUSINESS.email}`} className="flex items-center gap-2 hover:text-[#C5A059] transition-colors">
                   <Mail className="w-4 h-4 text-[#A51A1A]" />
-                  <span>admin@truxo.ae</span>
+                  <span>{BUSINESS.email}</span>
                 </a>
               </li>
             </ul>
