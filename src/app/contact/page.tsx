@@ -247,16 +247,16 @@ export default function ContactPage() {
       {/* 4. Interactive Google Map Embed */}
       <section className="w-full h-[500px] border-t-4 border-white/5 relative bg-[#111113]">
         <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_100px_rgba(5,5,5,1)]" />
-        <iframe 
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d115160.70295171732!2d55.8576449106095!3d25.328328153075514!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ef5e1f0e4b7b3b3%3A0x6b6c0e8623b3b42!2sAl%20Ghail%20-%20Ras%20al%20Khaimah%20-%20United%20Arab%20Emirates!5e0!3m2!1sen!2sus!4v1704123456789!5m2!1sen!2sus" 
-          className="w-full h-full filter invert-[90%] hue-rotate-[180deg] contrast-[85%] grayscale-[20%]" 
-          allowFullScreen={false} 
-          loading="lazy" 
+        <iframe
+          src="https://www.google.com/maps?q=Damascus+Street,+Al+Qusais,+Dubai,+United+Arab+Emirates&output=embed"
+          className="w-full h-full filter invert-[90%] hue-rotate-[180deg] contrast-[85%] grayscale-[20%]"
+          allowFullScreen={false}
+          loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
         />
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 bg-[#111113]/90 backdrop-blur-md border border-white/10 px-6 py-4 rounded-full shadow-2xl flex items-center gap-3 whitespace-nowrap">
           <MapPin className="w-4 h-4 text-[#C5A059]" />
-          <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white">Al Ghail Industrial Area</span>
+          <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white">Damascus Street, Al Qusais, Dubai</span>
         </div>
       </section>
 

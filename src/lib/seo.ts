@@ -98,7 +98,12 @@ export function siteJsonLd() {
         email: BUSINESS.email,
         description:
           "Heavy equipment rental in Dubai and across the UAE: excavators, forklifts, wheel loaders, cranes and trucks for construction, industrial and infrastructure projects.",
-        address: { "@type": "PostalAddress", addressLocality: BUSINESS.locality, addressCountry: BUSINESS.country },
+        address: {
+          "@type": "PostalAddress",
+          streetAddress: BUSINESS.streetAddress,
+          addressLocality: BUSINESS.locality,
+          addressCountry: BUSINESS.country,
+        },
         areaServed,
         parentOrganization: { "@id": ORG_ID },
         makesOffer: services.map((service) => ({

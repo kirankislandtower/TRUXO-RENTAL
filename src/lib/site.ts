@@ -9,6 +9,7 @@ export const BUSINESS = {
   telephone: "+971543058358",
   telephoneDisplay: "+971 54 305 8358",
   email: "sales@truxo.ae",
+  streetAddress: "Damascus Street, Al Qusais",
   locality: "Dubai",
   country: "AE",
   countryName: "United Arab Emirates",
